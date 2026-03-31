@@ -16,6 +16,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     { name: 'Products', href: '/admin/products', icon: Icons.Package },
     { name: 'Orders', href: '/admin/orders', icon: Icons.ShoppingCart },
     { name: 'Customers', href: '/admin/customers', icon: Icons.Users },
+    { name: 'Storefront', href: '/', icon: Icons.Globe }, // Assuming landing page is storefront
     { name: 'Settings', href: '/admin/settings', icon: Icons.Settings },
   ];
 
