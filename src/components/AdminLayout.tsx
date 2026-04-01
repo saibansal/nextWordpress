@@ -16,7 +16,14 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
       title: 'Dashboard',
       items: [
         { name: 'Home', href: '/admin', icon: Icons.Dashboard },
-        { name: 'Analytics', href: '/admin/reports', icon: Icons.BarChart },
+      ]
+    },
+    {
+      title: 'WooCommerce',
+
+      items: [
+        { name: 'Reports', href: '/admin/reports', icon: Icons.BarChart },
+        { name: 'Settings', href: '/admin/settings', icon: Icons.Settings },
       ]
     },
     {
@@ -25,8 +32,10 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
         { name: 'Orders', href: '/admin/orders', icon: Icons.ShoppingCart },
         { name: 'Products', href: '/admin/products', icon: Icons.Package },
         { name: 'Customers', href: '/admin/customers', icon: Icons.Users },
+        { name: 'Users', href: '/admin/users', icon: Icons.Users },
         { name: 'Coupons', href: '/admin/coupons', icon: Icons.Tag },
       ]
+
     },
     {
       title: 'Content',
@@ -40,10 +49,10 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
       title: 'System',
       items: [
         { name: 'Storefront', href: '/', icon: Icons.Globe },
-        { name: 'Settings', href: '/admin/settings', icon: Icons.Settings },
       ]
     }
   ];
+
 
   return (
     <div className="flex h-screen bg-[#F0F0F1] overflow-hidden"> {/* Using WP-style light gray bg */}

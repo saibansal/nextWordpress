@@ -4,6 +4,8 @@ import { Icons } from '../../../../components/Icons';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ProductSubNav from '../../../../components/ProductSubNav';
+import MediaPicker from '../../../../components/MediaPicker';
+
 
 export default function EditProduct() {
     const router = useRouter();
@@ -36,9 +38,9 @@ export default function EditProduct() {
     });
 
     const [categories, setCategories] = useState<any[]>([]);
-    const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
-    const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
-    const [compressing, setCompressing] = useState(false);
+    const [showMediaPicker, setShowMediaPicker] = useState(false);
+    const [pickerMode, setPickerMode] = useState<'main' | 'gallery'>('main');
+
 
     const organizeCategories = (cats: any[], parentId = 0, depth = 0): any[] => {
         let result: any[] = [];
@@ -82,10 +84,9 @@ export default function EditProduct() {
                             expanded: false
                         }))
                     });
-                    if (product.images?.[0]) setMainImagePreview(product.images[0].src);
-                    if (product.images?.length > 1) setGalleryPreviews(product.images.slice(1).map((img: any) => img.src));
                 }
             } catch (err) {
+
                 console.error("Failed to fetch product data:", err);
                 setError("Failed to load product details.");
             } finally {
@@ -95,83 +96,21 @@ export default function EditProduct() {
         fetchData();
     }, [id]);
 
-    const compressAndConvertToWebP = (file: File): Promise<{ blob: Blob, base64: string }> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width; let height = img.height; const MAX_WIDTH = 1200;
-                    if (width > MAX_WIDTH) { height = (MAX_WIDTH / width) * height; width = MAX_WIDTH; }
-                    canvas.width = width; canvas.height = height;
-                    const ctx = canvas.getContext('2d'); if (!ctx) return reject('Failed to get canvas context');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    canvas.toBlob((blob) => {
-                        if (blob) {
-                            const reader2 = new FileReader();
-                            reader2.onloadend = () => resolve({ blob, base64: reader2.result as string });
-                            reader2.readAsDataURL(blob);
-                        } else reject('Failed to create blob');
-                    }, 'image/webp', 0.8);
-                };
-                img.onerror = reject; img.src = e.target?.result as string;
-            };
-            reader.onerror = reject; reader.readAsDataURL(file);
-        });
-    };
-
-    const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setCompressing(true);
-            try {
-                const { blob, base64 } = await compressAndConvertToWebP(file);
-                const previewUrl = URL.createObjectURL(blob);
-                setMainImagePreview(previewUrl);
-                setFormData((prev: any) => ({
-                    ...prev,
-                    images: [{ src: previewUrl, alt: 'Main Image', isLocal: true, base64, fileName: file.name }, ...prev.images.filter((img: any) => img.alt !== 'Main Image' && prev.images.indexOf(img) > 0)]
-                }));
-            } catch (err) { console.error("Image processing failed:", err); } finally { setCompressing(false); }
+    const handleMediaSelect = (selectedImages: any[]) => {
+        if (pickerMode === 'main') {
+            const selected = selectedImages[0];
+            setFormData((prev: any) => ({
+                ...prev,
+                images: [{ id: selected.id, src: selected.src, alt: selected.alt || 'Main Image' }, ...prev.images.filter((img: any) => img.alt !== 'Main Image')]
+            }));
+        } else {
+            setFormData((prev: any) => ({
+                ...prev,
+                images: [...prev.images, ...selectedImages.map(img => ({ id: img.id, src: img.src, alt: img.alt || 'Gallery Image' }))]
+            }));
         }
     };
 
-    const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        if (files.length > 0) {
-            setCompressing(true);
-            try {
-                const processedList = await Promise.all(files.map(f => compressAndConvertToWebP(f)));
-                const previewUrls = processedList.map(p => URL.createObjectURL(p.blob));
-                setGalleryPreviews(prev => [...prev, ...previewUrls]);
-                const newImages = processedList.map((p, i) => ({ src: previewUrls[i], alt: 'Gallery Image', isLocal: true, base64: p.base64, fileName: files[i].name }));
-                setFormData((prev: any) => ({ ...prev, images: [...prev.images, ...newImages] }));
-            } catch (err) { console.error("Gallery processing failed:", err); } finally { setCompressing(false); }
-        }
-    };
-
-    const uploadImages = async () => {
-        const localImages = formData.images.filter((img: any) => img.isLocal);
-        const uploadedImageIds: number[] = [];
-
-        for (const img of localImages) {
-            try {
-                const res = await fetch('/api/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ file: img.base64, name: img.fileName, type: 'image/webp' })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.message || 'Media upload failed');
-                uploadedImageIds.push(data.id);
-            } catch (err: any) {
-                console.error("Local Image Upload Component Error:", err.message);
-                throw err; // Propagate up to handleSubmit to show in error UI
-            }
-        }
-        return uploadedImageIds;
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -179,20 +118,16 @@ export default function EditProduct() {
         setError(null);
 
         try {
-            // 1. Upload local images first
-            const uploadedIds = await uploadImages();
-
-            // 2. Prepare attributes
+            // Prepared attributes
             const finalAttributes = formData.attributes.map((attr: any) => ({
+
                 id: attr.id, name: attr.name, position: attr.position, visible: attr.visible, variation: attr.variation,
                 options: (attr.value_string || '').split('|').map((v: string) => v.trim()).filter((v: string) => v !== '')
             }));
 
             // 3. Prepare final image sequence (keep original IDs + new uploaded IDs)
-            const finalImages = [
-                ...formData.images.filter((img: any) => !img.isLocal).map((img: any) => ({ id: img.id })),
-                ...uploadedIds.map(id => ({ id }))
-            ];
+            const finalImages = formData.images.map((img: any) => ({ id: img.id }));
+
 
             const productPayload = {
                 name: formData.name, type: formData.type, status: formData.status,
@@ -281,17 +216,13 @@ export default function EditProduct() {
         setSelectedAttrId('');
     };
 
-    const removeGalleryImage = (index: number) => {
-        setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
-        setFormData((prev: any) => {
-            const newImages = [...prev.images];
-            let galleryEntries = prev.images.filter((img: any) => img.alt === 'Gallery Image' || (!img.alt && prev.images.indexOf(img) > 0));
-            const target = galleryEntries[index];
-            const realIndex = prev.images.indexOf(target);
-            if (realIndex > -1) newImages.splice(realIndex, 1);
-            return { ...prev, images: newImages };
-        });
+    const removeGalleryImage = (id: number) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            images: prev.images.filter((img: any) => img.id !== id)
+        }));
     };
+
 
     if (loading) return (
         <AdminLayout title="Edit Product | WP Admin">
@@ -521,19 +452,47 @@ export default function EditProduct() {
                         <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm"><div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm">Product categories</div><div className="p-4 h-48 overflow-y-auto">{hierarchicalCategories.map(cat => (<div key={cat.id} className="flex gap-2 text-xs py-1" style={{ paddingLeft: `${cat.depth * 15}px` }}> <input type="checkbox" checked={!!formData.categories.find((c: any) => c.id === cat.id)} onChange={() => handleCategoryToggle(cat.id)} /> {cat.name} </div>))}</div></div>
 
                         <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm">
-                            <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm flex justify-between"><span>Product image</span> {compressing && <Icons.RefreshCW className="w-3 h-3 animate-spin text-[#2271b1]" />}</div>
+                            <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm flex justify-between"><span>Product image</span></div>
                             <div className="p-4">
-                                <input type="file" hidden ref={mainImageRef} accept="image/*" onChange={handleMainImageChange} />
-                                {mainImagePreview ? (<div className="relative group border border-[#dcdcde]"><img src={mainImagePreview} alt="Preview" className="w-full aspect-square object-cover" /><div className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center gap-4 text-white"><button type="button" onClick={() => mainImageRef.current?.click()} className="text-[10px] uppercase font-bold">Replace</button><button type="button" onClick={() => { setMainImagePreview(null); setFormData((p: any) => ({ ...p, images: p.images.filter((img: any) => p.images.indexOf(img) > 0) })); }} className="text-[10px] uppercase font-bold">Remove</button></div></div>) : (<div onClick={() => mainImageRef.current?.click()} className="w-full aspect-square bg-[#f6f7f7] border-2 border-dashed border-[#dcdcde] flex flex-col items-center justify-center gap-2 cursor-pointer text-[#2271b1] hover:bg-gray-50"><Icons.Plus className="w-8 h-8 opacity-40" /><span className="text-xs font-bold leading-none mt-1">Upload</span></div>)}
+                                {formData.images.find((img: any) => img.alt === 'Main Image' || formData.images.indexOf(img) === 0) ? (
+                                    <div className="relative group border border-[#dcdcde]">
+                                        <img src={formData.images.find((img: any) => img.alt === 'Main Image' || formData.images.indexOf(img) === 0).src} alt="Preview" className="w-full aspect-square object-cover" />
+                                        <div className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center gap-4 text-white">
+                                            <button type="button" onClick={() => { setPickerMode('main'); setShowMediaPicker(true); }} className="text-[10px] uppercase font-bold">Replace</button>
+                                            <button type="button" onClick={() => setFormData((p: any) => ({ ...p, images: p.images.filter((img: any) => p.images.indexOf(img) > 0) }))} className="text-[10px] uppercase font-bold">Remove</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div onClick={() => { setPickerMode('main'); setShowMediaPicker(true); }} className="w-full aspect-square bg-[#f6f7f7] border-2 border-dashed border-[#dcdcde] flex flex-col items-center justify-center gap-2 cursor-pointer text-[#2271b1] hover:bg-gray-50">
+                                        <Icons.Plus className="w-8 h-8 opacity-40" />
+                                        <span className="text-xs font-bold leading-none mt-1">Set product image</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm overflow-hidden">
-                            <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm flex justify-between items-center"><span>Product gallery</span> {galleryPreviews.length > 0 && <span className="text-[10px] bg-gray-200 px-1.5 py-0.5 rounded-full">{galleryPreviews.length}</span>}</div>
+                            <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm flex justify-between items-center"><span>Product gallery</span></div>
                             <div className="p-4 space-y-4 text-sm font-normal">
-                                <div className="grid grid-cols-4 gap-2">{galleryPreviews.map((url, i) => (<div key={url} className="relative group aspect-square border border-[#dcdcde]"><img src={url} className="w-full h-full object-cover" /><button type="button" onClick={() => removeGalleryImage(i)} className="absolute -top-1 -right-1 bg-white rounded-full w-4/4 shadow flex items-center justify-center text-red-500 text-[10px] hidden group-hover:flex">×</button></div>))}</div>
-                                <input type="file" hidden multiple ref={galleryImagesRef} accept="image/*" onChange={handleGalleryChange} /><button type="button" onClick={() => galleryImagesRef.current?.click()} className="text-xs text-[#2271b1] font-semibold hover:underline">Add gallery images</button>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {formData.images.filter((img: any, i: number) => img.alt === 'Gallery Image' || i > 0).map((img: any) => (
+                                        <div key={img.id} className="relative group aspect-square border border-[#dcdcde]">
+                                            <img src={img.src} className="w-full h-full object-cover" />
+                                            <button type="button" onClick={() => removeGalleryImage(img.id)} className="absolute -top-1 -right-1 bg-white rounded-full w-4 h-4 shadow flex items-center justify-center text-red-500 text-[10px] hidden group-hover:flex">×</button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button type="button" onClick={() => { setPickerMode('gallery'); setShowMediaPicker(true); }} className="text-xs text-[#2271b1] font-semibold hover:underline">Add gallery images</button>
                             </div>
                         </div>
+
+                        {showMediaPicker && (
+                            <MediaPicker 
+                                multiple={pickerMode === 'gallery'}
+                                onClose={() => setShowMediaPicker(false)}
+                                onSelect={handleMediaSelect}
+                            />
+                        )}
+
                     </div>
                 </form>
             </div>

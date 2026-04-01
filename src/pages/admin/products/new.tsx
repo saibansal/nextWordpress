@@ -4,6 +4,8 @@ import { Icons } from '../../../components/Icons';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ProductSubNav from '../../../components/ProductSubNav';
+import MediaPicker from '../../../components/MediaPicker';
+
 
 export default function AddNewProduct() {
   const router = useRouter();
@@ -56,9 +58,9 @@ export default function AddNewProduct() {
   });
 
   const [categories, setCategories] = useState<any[]>([]);
-  const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
-  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
-  const [compressing, setCompressing] = useState(false);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'main' | 'gallery'>('main');
+
 
   const organizeCategories = (cats: any[], parentId = 0, depth = 0): any[] => {
     let result: any[] = [];
@@ -97,97 +99,19 @@ export default function AddNewProduct() {
     fetchData();
   }, []);
 
-  const compressAndConvertToWebP = (file: File): Promise<{ blob: Blob, base64: string }> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const MAX_WIDTH = 1200;
-          if (width > MAX_WIDTH) { height = (MAX_WIDTH / width) * height; width = MAX_WIDTH; }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return reject('Failed to get canvas context');
-          ctx.drawImage(img, 0, 0, width, height);
-          canvas.toBlob((blob) => {
-            if (blob) {
-                const reader2 = new FileReader();
-                reader2.onloadend = () => resolve({ blob, base64: reader2.result as string });
-                reader2.readAsDataURL(blob);
-            } else reject('Failed to create blob');
-          }, 'image/webp', 0.8);
-        };
-        img.onerror = reject;
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setCompressing(true);
-      try {
-        const { blob, base64 } = await compressAndConvertToWebP(file);
-        const previewUrl = URL.createObjectURL(blob);
-        setMainImagePreview(previewUrl);
-        setFormData(prev => ({
-          ...prev,
-          images: [{ src: previewUrl, alt: 'Main Image', isLocal: true, base64, fileName: file.name }, ...prev.images.filter((img: any) => !img.isLocal || img.alt !== 'Main Image')]
-        }));
-      } catch (err) {
-        console.error("Image processing failed:", err);
-      } finally {
-        setCompressing(false);
-      }
+  const handleMediaSelect = (selectedImages: any[]) => {
+    if (pickerMode === 'main') {
+      const selected = selectedImages[0];
+      setFormData(prev => ({
+        ...prev,
+        images: [{ id: selected.id, src: selected.src, alt: selected.alt || 'Main Image' }, ...prev.images.filter((img: any) => img.alt !== 'Main Image')]
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...selectedImages.map(img => ({ id: img.id, src: img.src, alt: img.alt || 'Gallery Image' }))]
+      }));
     }
-  };
-
-  const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      setCompressing(true);
-      try {
-        const processedList = await Promise.all(files.map(f => compressAndConvertToWebP(f)));
-        const previewUrls = processedList.map(p => URL.createObjectURL(p.blob));
-        setGalleryPreviews(prev => [...prev, ...previewUrls]);
-        const newImages = processedList.map((p, i) => ({ src: previewUrls[i], alt: 'Gallery Image', isLocal: true, base64: p.base64, fileName: files[i].name }));
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, ...newImages]
-        }));
-      } catch (err) {
-        console.error("Gallery processing failed:", err);
-      } finally {
-        setCompressing(false);
-      }
-    }
-  };
-
-  const uploadImages = async () => {
-      const localImages = formData.images.filter((img: any) => img.isLocal);
-      const uploadedImageIds: number[] = [];
-      const uploadedUrls: string[] = [];
-
-      for (const img of localImages) {
-          const res = await fetch('/api/upload', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ file: img.base64, name: img.fileName, type: 'image/webp' })
-          });
-          const data = await res.json();
-          if (!res.ok) {
-              throw new Error(data.message || 'Image upload failed');
-          }
-          uploadedImageIds.push(data.id);
-      }
-      return uploadedImageIds;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -196,8 +120,6 @@ export default function AddNewProduct() {
     setError(null);
 
     try {
-      const uploadedIds = await uploadImages();
-      
       const finalAttributes = formData.attributes.map(attr => ({
         id: attr.id,
         name: attr.name,
@@ -207,16 +129,9 @@ export default function AddNewProduct() {
         options: (attr.value_string || '').split('|').map((v: string) => v.trim()).filter((v: string) => v !== '')
       }));
 
-      // Merge existing images with newly uploaded ones
-      const finalImages = [
-          ...formData.images.filter((img: any) => !img.isLocal).map((img: any) => ({ id: img.id, src: img.src })),
-          ...uploadedIds.map(id => ({ id }))
-      ];
-
       const productPayload = {
         ...formData,
         attributes: finalAttributes,
-        images: finalImages,
         variations: formData.type === 'variable' ? formData.variations.map(v => ({
             ...v,
             attributes: v.attributes.map((a: any) => ({ id: a.id, name: a.name, option: a.option }))
@@ -239,6 +154,7 @@ export default function AddNewProduct() {
       setLoading(false);
     }
   };
+
 
   // ... (categories, attributes, UI components remain mostly the same)
   const handleCategoryToggle = (id: number) => {
@@ -309,19 +225,13 @@ export default function AddNewProduct() {
     setFormData({ ...formData, variations: generated });
   };
 
-  const removeGalleryImage = (index: number) => {
-      setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
-      setFormData(prev => {
-          const newImages = [...prev.images];
-          let galleryEntries = prev.images.filter((img: any) => img.alt === 'Gallery Image');
-          if (galleryEntries.length > 0) {
-              const target = galleryEntries[index];
-              const realIndex = prev.images.indexOf(target);
-              if (realIndex > -1) newImages.splice(realIndex, 1);
-          }
-          return { ...prev, images: newImages };
-      });
+  const removeGalleryImage = (id: number) => {
+      setFormData(prev => ({
+          ...prev,
+          images: prev.images.filter((img: any) => img.id !== id)
+      }));
   };
+
 
   return (
     <AdminLayout title="Add New Product | WP Admin">
@@ -330,9 +240,9 @@ export default function AddNewProduct() {
         <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center">
             <Icons.RefreshCW className="w-12 h-12 text-[#2271b1] animate-spin mb-4" />
             <h3 className="text-lg font-bold">Publishing your product...</h3>
-            <p className="text-sm text-gray-500">Uploading optimized WebP images</p>
         </div>
       )}
+
       <div className="max-w-6xl mx-auto pb-24">
         {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 text-xs animate-in slide-in-from-top-2">{error}</div>}
         <div className="flex items-center gap-4 mb-6"><h2 className="text-2xl font-normal text-[#1d2327]">Add New Product</h2></div>
@@ -545,19 +455,47 @@ export default function AddNewProduct() {
             </div>
             <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm"><div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm">Product categories</div><div className="p-4 h-48 overflow-y-auto">{hierarchicalCategories.map(cat => (<div key={cat.id} className="flex gap-2 text-xs py-1" style={{ paddingLeft: `${cat.depth * 15}px` }}> <input type="checkbox" checked={!!formData.categories.find(c => c.id === cat.id)} onChange={() => handleCategoryToggle(cat.id)} /> {cat.name} </div>))}</div></div>
             <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm overflow-hidden">
-                <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm flex justify-between"><span>Product image</span> {compressing && <Icons.RefreshCW className="w-3 h-3 animate-spin text-[#2271b1]" />}</div>
+                <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm flex justify-between"><span>Product image</span></div>
                 <div className="p-4">
-                    <input type="file" hidden ref={mainImageRef} accept="image/*" onChange={handleMainImageChange} />
-                    {mainImagePreview ? (<div className="relative group border border-[#dcdcde]"><img src={mainImagePreview} alt="WebP Preview" className="w-full aspect-square object-cover" /><div className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center gap-4 text-white"><button type="button" onClick={() => mainImageRef.current?.click()} className="text-[10px] uppercase font-bold">Replace</button><button type="button" onClick={() => { setMainImagePreview(null); setFormData(p => ({...p, images: p.images.filter((img: any) => img.alt !== 'Main Image')})); }} className="text-[10px] uppercase font-bold">Remove</button></div></div>) : (<div onClick={() => mainImageRef.current?.click()} className="w-full aspect-square bg-[#f6f7f7] border-2 border-dashed border-[#dcdcde] flex flex-col items-center justify-center gap-2 cursor-pointer text-[#2271b1] hover:bg-gray-50"><Icons.Plus className="w-8 h-8 opacity-40" /><span className="text-xs font-bold font-normal">Upload</span></div>)}
+                    {formData.images.find((img: any) => img.alt === 'Main Image') ? (
+                       <div className="relative group border border-[#dcdcde]">
+                            <img src={formData.images.find((img: any) => img.alt === 'Main Image').src} alt="Preview" className="w-full aspect-square object-cover" />
+                            <div className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center gap-4 text-white">
+                                <button type="button" onClick={() => { setPickerMode('main'); setShowMediaPicker(true); }} className="text-[10px] uppercase font-bold">Replace</button>
+                                <button type="button" onClick={() => setFormData(p => ({...p, images: p.images.filter((img: any) => img.alt !== 'Main Image')}))} className="text-[10px] uppercase font-bold">Remove</button>
+                            </div>
+                       </div>
+                    ) : (
+                        <div onClick={() => { setPickerMode('main'); setShowMediaPicker(true); }} className="w-full aspect-square bg-[#f6f7f7] border-2 border-dashed border-[#dcdcde] flex flex-col items-center justify-center gap-2 cursor-pointer text-[#2271b1] hover:bg-gray-50">
+                            <Icons.Plus className="w-8 h-8 opacity-40" />
+                            <span className="text-xs font-bold">Set product image</span>
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm overflow-hidden">
                 <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm">Product gallery</div>
                 <div className="p-4 space-y-4">
-                    <div className="grid grid-cols-4 gap-2">{galleryPreviews.map((url, i) => (<div key={url} className="relative group aspect-square border border-[#dcdcde]"><img src={url} className="w-full h-full object-cover" /><button type="button" onClick={() => removeGalleryImage(i)} className="absolute -top-1 -right-1 bg-white rounded-full w-4 h-4 shadow flex items-center justify-center text-red-500 text-[10px] hidden group-hover:flex">×</button></div>))}</div>
-                    <input type="file" hidden multiple ref={galleryImagesRef} accept="image/*" onChange={handleGalleryChange} /><button type="button" onClick={() => galleryImagesRef.current?.click()} className="text-xs text-[#2271b1] font-semibold hover:underline">Add gallery images</button>
+                    <div className="grid grid-cols-4 gap-2">
+                        {formData.images.filter((img: any) => img.alt === 'Gallery Image').map((img: any) => (
+                            <div key={img.id} className="relative group aspect-square border border-[#dcdcde]">
+                                <img src={img.src} className="w-full h-full object-cover" />
+                                <button type="button" onClick={() => removeGalleryImage(img.id)} className="absolute -top-1 -right-1 bg-white rounded-full w-4 h-4 shadow flex items-center justify-center text-red-500 font-bold text-[10px] hidden group-hover:flex">×</button>
+                            </div>
+                        ))}
+                    </div>
+                    <button type="button" onClick={() => { setPickerMode('gallery'); setShowMediaPicker(true); }} className="text-xs text-[#2271b1] font-semibold hover:underline">Add product gallery images</button>
                 </div>
             </div>
+
+            {showMediaPicker && (
+                <MediaPicker 
+                    multiple={pickerMode === 'gallery'}
+                    onClose={() => setShowMediaPicker(false)}
+                    onSelect={handleMediaSelect}
+                />
+            )}
+
           </div>
         </form>
       </div>
