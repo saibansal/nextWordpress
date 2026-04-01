@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { Icons } from '../../components/Icons';
-import api from '../../lib/woocommerce';
+// import api from '../../lib/woocommerce';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState([
@@ -18,35 +18,41 @@ export default function AdminDashboard() {
     async function fetchDashboardData() {
       try {
         // Fetch recent orders
-        const ordersRes = await api.get("orders", { per_page: 5 });
-        setRecentOrders(ordersRes.data);
+        const ordersRes = await fetch("/api/wc/orders?per_page=5");
+        if (ordersRes.ok) setRecentOrders(await ordersRes.json());
 
         // Fetch products for stock alerts
-        const productsRes = await api.get("products", { per_page: 100, stock_status: 'outofstock' });
-        const lowStockRes = await api.get("products", { per_page: 100 });
+        const productsRes = await fetch("/api/wc/products?per_page=100&stock_status=outofstock");
+        const lowStockRes = await fetch("/api/wc/products?per_page=100");
         
-        const lowStockItems = lowStockRes.data
-          .filter((p: any) => p.manage_stock && p.stock_quantity <= 5)
-          .slice(0, 3);
-        setStockAlerts(lowStockItems);
+        if (lowStockRes.ok) {
+          const productsData = await lowStockRes.json();
+          const lowStockItems = productsData
+            .filter((p: any) => p.manage_stock && p.stock_quantity <= 5)
+            .slice(0, 3);
+          setStockAlerts(lowStockItems);
+        }
 
-        // Calculate basic stats (In a real app, you'd use a dedicated stats endpoint or aggregate)
-        const allOrders = await api.get("orders", { per_page: 100 });
-        const totalRevenue = allOrders.data.reduce((acc: number, order: any) => acc + parseFloat(order.total), 0);
-        const totalOrders = allOrders.headers['x-wp-total'] || allOrders.data.length;
-        
-        const allProducts = await api.get("products", { per_page: 1 });
-        const totalProducts = allProducts.headers['x-wp-total'] || 0;
+        // Calculate basic stats 
+        const allOrdersRes = await fetch("/api/wc/orders?per_page=100");
+        if (allOrdersRes.ok) {
+          const allOrders = await allOrdersRes.json();
+          const totalRevenue = allOrders.reduce((acc: number, order: any) => acc + parseFloat(order.total), 0);
+          const totalOrders = allOrdersRes.headers.get('x-wp-total') || allOrders.length;
+          
+          const productsHeaderRes = await fetch("/api/wc/products?per_page=1");
+          const totalProducts = productsHeaderRes.headers.get('x-wp-total') || 0;
 
-        const allCustomers = await api.get("customers", { per_page: 1 });
-        const totalCustomers = allCustomers.headers['x-wp-total'] || 0;
+          const customersHeaderRes = await fetch("/api/wc/customers?per_page=1");
+          const totalCustomers = customersHeaderRes.headers.get('x-wp-total') || 0;
 
-        setStats([
-          { title: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, trend: '', isUp: true },
-          { title: 'Total Orders', value: totalOrders.toString(), trend: '', isUp: true },
-          { title: 'Total Products', value: totalProducts.toString(), trend: '', isUp: true },
-          { title: 'Customers', value: totalCustomers.toString(), trend: '', isUp: true },
-        ]);
+          setStats([
+            { title: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, trend: '', isUp: true },
+            { title: 'Total Orders', value: totalOrders.toString(), trend: '', isUp: true },
+            { title: 'Total Products', value: totalProducts.toString(), trend: '', isUp: true },
+            { title: 'Customers', value: totalCustomers.toString(), trend: '', isUp: true },
+          ]);
+        }
 
       } catch (err) {
         console.error("Dashboard fetch error:", err);
@@ -57,6 +63,7 @@ export default function AdminDashboard() {
 
     fetchDashboardData();
   }, []);
+
 
   return (
     <AdminLayout title="Dashboard Overview">

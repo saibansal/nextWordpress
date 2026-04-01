@@ -19,8 +19,9 @@ export default async function handler(
 
       return res.status(200).json(response.data);
     } catch (error: any) {
+      console.error(`WC GET ERROR [${endpoint}]:`, error.response?.data || error.message);
       return res.status(error.response?.status || 500).json({
-        message: `Failed to fetch ${endpoint}`,
+        message: `Failed to fetch ${endpoint} from ${endpoint}`,
         error: error.response?.data || error.message
       });
     }

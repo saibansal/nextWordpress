@@ -8,38 +8,53 @@ export default function AdminCustomers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchCustomers() {
-      try {
-        const response = await fetch("/api/wc/customers?per_page=20");
-        if (!response.ok) throw new Error("Failed to fetch customers");
-        const data = await response.json();
-        setCustomers(data);
-      } catch (err: any) {
-        console.error("Error fetching customers:", err);
-        setError("Failed to fetch customers. Please check your API credentials.");
-      } finally {
-        setLoading(false);
-      }
-    }
+  const [search, setSearch] = useState('');
 
+  const fetchCustomers = async (searchQuery = '') => {
+    setLoading(true);
+    try {
+      const url = new URL("/api/wc/customers", window.location.origin);
+      url.searchParams.append('per_page', '100');
+      if (searchQuery) url.searchParams.append('search', searchQuery);
+      
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error("Failed to fetch customers");
+      const data = await response.json();
+      setCustomers(data);
+    } catch (err: any) {
+      console.error("Error fetching customers:", err);
+      setError("Failed to fetch customers. Please check your API credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchCustomers();
   }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchCustomers(search);
+  };
 
   return (
     <AdminLayout title="Customer Management">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <div className="relative">
+          <form onSubmit={handleSearch} className="relative">
             <Icons.Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search customers..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="bg-card border border-border rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-80 shadow-sm"
             />
-          </div>
+          </form>
         </div>
       </div>
+
 
       {loading ? (
         <div className="flex items-center justify-center h-64">

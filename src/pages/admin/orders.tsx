@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { Icons } from '../../components/Icons';
-import api from '../../lib/woocommerce';
+// import api from '../../lib/woocommerce';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -11,8 +11,10 @@ export default function AdminOrders() {
   useEffect(() => {
     async function fetchOrders() {
       try {
-        const response = await api.get("orders", { per_page: 20 });
-        setOrders(response.data);
+        const response = await fetch("/api/wc/orders?per_page=20");
+        if (!response.ok) throw new Error("Failed to fetch orders");
+        const data = await response.json();
+        setOrders(data);
       } catch (err: any) {
         console.error("Error fetching orders:", err);
         setError("Failed to fetch orders. Please check your API credentials.");
@@ -23,6 +25,7 @@ export default function AdminOrders() {
 
     fetchOrders();
   }, []);
+
 
   return (
     <AdminLayout title="Order Management">

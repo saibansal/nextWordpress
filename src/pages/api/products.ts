@@ -25,6 +25,7 @@ export default async function handler(
 
       return res.status(200).json(response.data);
     } catch (error: any) {
+      console.error('WC GET PRODUCTS ERROR:', error.response?.data || error.message);
       return res.status(error.response?.status || 500).json({
         message: 'Failed to fetch products',
         error: error.response?.data || error.message

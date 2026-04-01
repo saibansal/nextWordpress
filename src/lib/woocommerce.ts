@@ -1,4 +1,6 @@
 import WooCommerceRestApi from "@woocommerce/woocommerce-rest-api";
+import https from 'https';
+
 const api = new WooCommerceRestApi({
   url: process.env.NEXT_PUBLIC_WORDPRESS_URL || "http://localhost/wordpress/wordpress-backend",
   consumerKey: process.env.WC_CONSUMER_KEY || "",
@@ -9,10 +11,11 @@ const api = new WooCommerceRestApi({
     headers: {
       "Content-Type": "application/json",
     },
-    // Useful for local dev if SSL is self-signed/missing
-    httpsAgent: {
+    // Proper way to ignore self-signed certificates or SSL issues during dev
+    httpsAgent: new https.Agent({
         rejectUnauthorized: false
-    }
+    })
   }
 });
+
 export default api;
