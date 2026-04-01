@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { Icons } from '../../components/Icons';
-import api from '../../lib/woocommerce';
+// import api from '../../lib/woocommerce';
 
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -11,8 +11,10 @@ export default function AdminCustomers() {
   useEffect(() => {
     async function fetchCustomers() {
       try {
-        const response = await api.get("customers", { per_page: 20 });
-        setCustomers(response.data);
+        const response = await fetch("/api/wc/customers?per_page=20");
+        if (!response.ok) throw new Error("Failed to fetch customers");
+        const data = await response.json();
+        setCustomers(data);
       } catch (err: any) {
         console.error("Error fetching customers:", err);
         setError("Failed to fetch customers. Please check your API credentials.");

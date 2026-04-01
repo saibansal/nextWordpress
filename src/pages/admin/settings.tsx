@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { Icons } from '../../components/Icons';
-import api from '../../lib/woocommerce';
+// import api from '../../lib/woocommerce';
 
 export default function AdminSettings() {
   const [settings, setSettings] = useState<any>({});
@@ -12,8 +12,10 @@ export default function AdminSettings() {
   useEffect(() => {
     async function fetchSettings() {
       try {
-        const response = await api.get("settings/general");
-        const settingsMap = response.data.reduce((acc: any, curr: any) => {
+        const response = await fetch("/api/wc/settings/general");
+        if (!response.ok) throw new Error("Failed to fetch settings");
+        const data = await response.json();
+        const settingsMap = data.reduce((acc: any, curr: any) => {
           acc[curr.id] = curr.value;
           return acc;
         }, {});
@@ -27,6 +29,7 @@ export default function AdminSettings() {
 
     fetchSettings();
   }, []);
+
 
   const handleSave = async () => {
     setSaving(true);

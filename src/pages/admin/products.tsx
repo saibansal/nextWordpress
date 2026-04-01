@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import AdminLayout from '../../components/AdminLayout';
 import { Icons } from '../../components/Icons';
-import api from '../../lib/woocommerce';
+// import api from '../../lib/woocommerce';
 import ProductSubNav from '../../components/ProductSubNav';
 
 export default function AdminProducts() {
@@ -31,26 +31,26 @@ export default function AdminProducts() {
       if (searchQuery) url.searchParams.append('search', searchQuery);
 
       const response = await fetch(url.toString());
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to fetch products');
       }
 
       const data = await response.json();
-      
+
       if (append) {
         setProducts(prev => [...prev, ...data]);
       } else {
         setProducts(data);
       }
-      
+
       const totalPagesHeader = response.headers.get('x-wp-totalpages');
       const totalCountHeader = response.headers.get('x-wp-total');
-      
+
       if (totalPagesHeader) setTotalPages(parseInt(totalPagesHeader));
       if (totalCountHeader) setTotalProducts(parseInt(totalCountHeader));
-      
+
       setLastSync(new Date().toLocaleTimeString());
 
     } catch (err: any) {
@@ -73,17 +73,17 @@ export default function AdminProducts() {
         const url = new URL('/api/products', window.location.origin);
         url.searchParams.append('page', currentPage.toString());
         url.searchParams.append('per_page', '100');
-        
+
         const response = await fetch(url.toString());
         if (!response.ok) break;
-        
+
         const data = await response.json();
         allProducts = [...allProducts, ...data];
         setProducts([...allProducts]);
 
         const totalPagesHeader = response.headers.get('x-wp-totalpages');
         if (totalPagesHeader) totalPagesInFetch = parseInt(totalPagesHeader);
-        
+
         setSyncProgress(Math.round((currentPage / totalPagesInFetch) * 100));
         currentPage++;
       }
@@ -112,29 +112,29 @@ export default function AdminProducts() {
   };
 
   const toggleSelect = (id: number) => {
-    setSelectedProducts(prev => 
+    setSelectedProducts(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to move this product to trash?')) return;
-    
+
     setLoading(true);
     try {
       const response = await fetch(`/api/wc/products/${id}`, {
         method: 'DELETE',
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to delete product');
       }
-      
+
       // Remove from state immediately
       setProducts(prev => prev.filter(p => p.id !== id));
       setTotalProducts(prev => prev - 1);
-      
+
     } catch (err: any) {
       console.error("Delete error:", err);
       setError(err.message);
@@ -146,17 +146,17 @@ export default function AdminProducts() {
   const handleBulkDelete = async () => {
     if (selectedProducts.length === 0) return;
     if (!confirm(`Are you sure you want to move ${selectedProducts.length} products to trash?`)) return;
-    
+
     setLoading(true);
     try {
       // WooCommerce doesn't have a bulk delete endpoint in the same way, we loop for simplicity here
       // or we could implement a batch endpoint in the proxy.
       await Promise.all(selectedProducts.map(id => fetch(`/api/wc/products/${id}`, { method: 'DELETE' })));
-      
+
       setProducts(prev => prev.filter(p => !selectedProducts.includes(p.id)));
       setTotalProducts(prev => prev - selectedProducts.length);
       setSelectedProducts([]);
-      
+
     } catch (err: any) {
       setError("Failed to delete some products.");
     } finally {
@@ -174,8 +174,8 @@ export default function AdminProducts() {
             <span className="font-bold text-black border-r border-[#dcdcde] pr-2 uppercase text-[11px] tracking-wider">All ({totalProducts})</span>
             <span className="text-[#2271b1] border-r border-[#dcdcde] pr-2 uppercase text-[11px] tracking-wider">Published ({totalProducts})</span>
           </div>
-          
-          <button 
+
+          <button
             onClick={fetchAllProducts}
             className="bg-[#2271b1] text-white hover:bg-[#135e96] px-4 py-2 text-sm font-semibold rounded-sm flex items-center gap-2 shadow-sm transition-all active:scale-95"
           >
@@ -195,7 +195,7 @@ export default function AdminProducts() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="bg-white border border-[#8c8f94] px-3 py-1 text-sm focus:border-[#2271b1] focus:ring-1 focus:ring-[#2271b1] outline-none h-8 w-64"
               />
-              <button 
+              <button
                 onClick={() => { setPage(1); fetchProducts(search, 1); }}
                 className="bg-white border border-[#2271b1] text-[#2271b1] hover:bg-[#f6f7f7] px-4 py-1 text-sm font-semibold h-8"
               >
@@ -205,14 +205,14 @@ export default function AdminProducts() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <select 
+            <select
               id="bulk-action"
               className="bg-white border border-[#8c8f94] px-2 py-1 text-sm h-8 outline-none focus:border-[#2271b1]"
             >
               <option value="">Bulk actions</option>
               <option value="trash">Move to Trash</option>
             </select>
-            <button 
+            <button
               onClick={() => {
                 const selectElement = document.getElementById('bulk-action') as HTMLSelectElement;
                 if (selectElement.value === 'trash') handleBulkDelete();
@@ -221,7 +221,7 @@ export default function AdminProducts() {
             >
               Apply
             </button>
-            
+
             <div className="flex gap-1 ml-4 overflow-hidden border border-[#dcdcde] rounded-sm h-8">
               <select className="bg-white border-r border-[#dcdcde] px-2 py-1 text-sm outline-none">
                 <option>Filter by category</option>
@@ -240,11 +240,11 @@ export default function AdminProducts() {
           <thead>
             <tr className="bg-[#f6f7f7] border-b border-[#dcdcde] text-[11px] uppercase tracking-wider text-[#1d2327]">
               <th className="px-3 py-3 w-10 text-center">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={selectedProducts.length === products.length && products.length > 0}
                   onChange={toggleSelectAll}
-                  className="w-4 h-4 accent-[#2271b1]" 
+                  className="w-4 h-4 accent-[#2271b1]"
                 />
               </th>
               <th className="px-3 py-3 w-16 text-center">
@@ -262,11 +262,11 @@ export default function AdminProducts() {
             {products.map((product) => (
               <tr key={product.id} className="border-b border-[#f0f0f1] hover:bg-[#f6f7f7] text-sm group/row relative transition-colors">
                 <td className="px-3 py-4 text-center">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={selectedProducts.includes(product.id)}
                     onChange={() => toggleSelect(product.id)}
-                    className="w-4 h-4 accent-[#2271b1]" 
+                    className="w-4 h-4 accent-[#2271b1]"
                   />
                 </td>
                 <td className="px-3 py-4">
@@ -310,7 +310,7 @@ export default function AdminProducts() {
             ))}
           </tbody>
         </table>
-        
+
         {products.length === 0 && !loading && (
           <div className="p-12 text-center text-gray-500 italic bg-gray-50/50">
             <Icons.Package className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -323,16 +323,16 @@ export default function AdminProducts() {
         <div className="text-xs font-medium text-[#1d2327]">
           Showing {products.length} of {totalProducts} items
         </div>
-        
+
         <div className="flex items-center gap-1">
-          <button 
+          <button
             disabled={page === 1}
             onClick={() => { setPage(1); window.scrollTo(0, 0); }}
             className="w-8 h-8 flex items-center justify-center bg-white border border-[#dcdcde] disabled:opacity-50 hover:bg-[#f6f7f7] transition-colors"
           >
             «
           </button>
-          <button 
+          <button
             disabled={page === 1}
             onClick={() => { setPage(p => p - 1); window.scrollTo(0, 0); }}
             className="w-8 h-8 flex items-center justify-center bg-white border border-[#dcdcde] disabled:opacity-50 hover:bg-[#f6f7f7] transition-colors"
@@ -342,14 +342,14 @@ export default function AdminProducts() {
           <span className="bg-white border border-[#dcdcde] px-4 h-8 flex items-center text-xs font-bold">
             {page} / {totalPages}
           </span>
-          <button 
+          <button
             disabled={page >= totalPages}
             onClick={() => { setPage(p => p + 1); window.scrollTo(0, 0); }}
             className="w-8 h-8 flex items-center justify-center bg-white border border-[#dcdcde] disabled:opacity-50 hover:bg-[#f6f7f7] transition-colors"
           >
             ›
           </button>
-          <button 
+          <button
             disabled={page >= totalPages}
             onClick={() => { setPage(totalPages); window.scrollTo(0, 0); }}
             className="w-8 h-8 flex items-center justify-center bg-white border border-[#dcdcde] disabled:opacity-50 hover:bg-[#f6f7f7] transition-colors"
