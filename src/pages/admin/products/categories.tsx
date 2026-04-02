@@ -48,7 +48,7 @@ export default function ProductCategories() {
     setLoading(true);
     try {
       const url = editingId 
-        ? `/api/wc/products/categories?id=${editingId}` 
+        ? `/api/wc/products/categories/${editingId}` 
         : '/api/wc/products/categories';
       const method = editingId ? 'PUT' : 'POST';
 
@@ -84,14 +84,20 @@ export default function ProductCategories() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this category?')) return;
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    setLoading(true);
     try {
-      const res = await fetch(`/api/wc/products/categories?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/wc/products/categories/${deleteConfirmId}?force=true`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete category');
+      setDeleteConfirmId(null);
       fetchCategories();
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -210,7 +216,7 @@ export default function ProductCategories() {
                             <button onClick={() => handleEdit(cat)} className="hover:text-black">Edit</button>
                             <span className="text-[#dcdcde]">|</span>
                             <button 
-                                onClick={() => handleDelete(cat.id)}
+                                onClick={() => setDeleteConfirmId(cat.id)}
                                 className="hover:text-destructive text-destructive"
                             >Delete</button>
                             <span className="text-[#dcdcde]">|</span>
@@ -229,6 +235,45 @@ export default function ProductCategories() {
         </div>
       </div>
       {error && <div className="mt-4 p-4 bg-red-50 text-red-600 border-l-4 border-red-600 text-sm font-medium">{error}</div>}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm rounded-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-[#dcdcde]">
+             <div className="p-4 bg-[#1d2327] text-white flex items-center justify-between">
+                <h3 className="font-bold text-xs uppercase tracking-widest">Confirm Deletion</h3>
+                <button onClick={() => setDeleteConfirmId(null)}><Icons.X className="w-4 h-4 hover:text-red-500 transition-colors" /></button>
+             </div>
+             <div className="p-6 space-y-6">
+                <div className="flex items-center gap-4 text-gray-600">
+                    <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                        <Icons.Trash2 className="w-6 h-6 text-red-500" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-[#1d2327]">Permanently delete this category?</p>
+                        <p className="text-xs text-gray-500 mt-1">This action cannot be undone and will affect products using this category.</p>
+                    </div>
+                </div>
+                
+                <div className="flex items-center justify-end gap-3 pt-2">
+                   <button 
+                     onClick={() => setDeleteConfirmId(null)}
+                     className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-gray-400 hover:text-black transition-colors"
+                   >
+                     Keep it
+                   </button>
+                   <button 
+                     onClick={handleDelete}
+                     disabled={loading}
+                     className="bg-red-600 text-white px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-sm shadow-md hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50"
+                   >
+                     {loading ? 'Deleting...' : 'Confirm Delete'}
+                   </button>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

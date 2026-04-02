@@ -12,6 +12,8 @@ interface LocationContextType {
   selectLocation: (location: Location) => void;
   clearLocation: () => void;
   isLoading: boolean;
+  isPopupOpen: boolean;
+  setPopupOpen: (open: boolean) => void;
 }
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
@@ -19,6 +21,7 @@ const LocationContext = createContext<LocationContextType | undefined>(undefined
 export function LocationProvider({ children }: { children: React.ReactNode }) {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('sakoon_selected_location');
@@ -28,18 +31,28 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const selectLocation = (location: Location) => {
+  const selectLocation = React.useCallback((location: Location) => {
     setSelectedLocation(location);
     localStorage.setItem('sakoon_selected_location', JSON.stringify(location));
-  };
+    setIsPopupOpen(false);
+  }, []);
 
-  const clearLocation = () => {
+  const clearLocation = React.useCallback(() => {
     setSelectedLocation(null);
     localStorage.removeItem('sakoon_selected_location');
-  };
+  }, []);
+
+  const value = React.useMemo(() => ({
+    selectedLocation,
+    selectLocation,
+    clearLocation,
+    isLoading,
+    isPopupOpen,
+    setPopupOpen: setIsPopupOpen
+  }), [selectedLocation, selectLocation, clearLocation, isLoading, isPopupOpen]);
 
   return (
-    <LocationContext.Provider value={{ selectedLocation, selectLocation, clearLocation, isLoading }}>
+    <LocationContext.Provider value={value}>
       {children}
     </LocationContext.Provider>
   );

@@ -33,7 +33,7 @@ export default function ProductAttributes() {
     setLoading(true);
     try {
       const url = editingId 
-        ? `/api/wc/products/attributes?id=${editingId}` 
+        ? `/api/wc/products/attributes/${editingId}` 
         : '/api/wc/products/attributes';
       const method = editingId ? 'PUT' : 'POST';
 
@@ -71,7 +71,7 @@ export default function ProductAttributes() {
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this attribute?')) return;
     try {
-      const res = await fetch(`/api/wc/products/attributes?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/wc/products/attributes/${id}?force=true`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete attribute');
       fetchAttributes();
     } catch (err: any) {

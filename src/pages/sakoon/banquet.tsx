@@ -48,7 +48,7 @@ export default function SakoonBanquet() {
         <div className="text-left">
           <h2 className="text-[#F2002D] font-black uppercase tracking-[0.3em] text-[10px] mb-4">Event Packages</h2>
           <h3 className="text-4xl font-rubik font-black text-[#1B1B1B]">Crafted for Perfection</h3>
-          <ProductList />
+          <ProductList categorySlug="banquet" />
         </div>
       </section>
     </SakoonLayout>

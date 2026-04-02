@@ -139,11 +139,14 @@ export default function AddNewProduct() {
 
       const productPayload = {
         ...formData,
+        categories: formData.categories.map((c: any) => ({ id: c.id })),
+        tags: (formData.tags || []).map((t: any) => ({ id: t.id })),
         attributes: finalAttributes,
         variations: formData.type === 'variable' ? formData.variations.map(v => ({
             ...v,
             attributes: v.attributes.map((a: any) => ({ id: a.id, name: a.name, option: a.option }))
-        })) : []
+        })) : [],
+        meta_data: formData.meta_data || []
       };
 
       const response = await fetch('/api/products', {

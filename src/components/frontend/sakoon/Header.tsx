@@ -6,7 +6,7 @@ import { useLocation } from '../../../context/LocationContext';
 
 export default function Header() {
   const router = useRouter();
-  const { selectedLocation, clearLocation } = useLocation();
+  const { selectedLocation, clearLocation, setPopupOpen } = useLocation();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -56,8 +56,10 @@ export default function Header() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => {
-            alert('location reset and select location');
-            clearLocation();
+            if (selectedLocation) {
+                clearLocation();
+            }
+            setPopupOpen(true);
           }}
           className="hidden sm:block bg-[#F2002D] text-white px-6 py-2.5 rounded-full text-[11px] font-black tracking-widest hover:bg-black transition-all"
         >

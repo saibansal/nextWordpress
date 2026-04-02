@@ -9,8 +9,9 @@ export default function AdminPages() {
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState('');
+  const [editingPageId, setEditingPageId] = useState<number | null>(null);
   
-  const [newPage, setNewPage] = useState({
+  const [formData, setFormData] = useState({
     title: '',
     content: '',
     status: 'publish',
@@ -23,6 +24,7 @@ export default function AdminPages() {
       const url = new URL("/api/wp/pages", window.location.origin);
       url.searchParams.append('per_page', '100');
       url.searchParams.append('status', 'publish,draft,private,pending');
+      url.searchParams.append('_fields', 'id,title,content,status,slug,link,date'); // Get content too
       if (searchQuery) url.searchParams.append('search', searchQuery);
       
       const response = await fetch(url.toString());
@@ -46,27 +48,51 @@ export default function AdminPages() {
     fetchPages();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleEdit = (page: any) => {
+    setEditingPageId(page.id);
+    setFormData({
+      title: page.title.rendered,
+      content: page.content.rendered,
+      status: page.status,
+      slug: page.slug
+    });
+    setShowAddModal(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch("/api/wp/pages", {
-        method: 'POST',
+      const method = editingPageId ? 'PUT' : 'POST';
+      const url = editingPageId ? `/api/wp/pages/${editingPageId}` : "/api/wp/pages";
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPage)
+        body: JSON.stringify({
+            title: formData.title,
+            content: formData.content,
+            status: formData.status,
+            slug: formData.slug
+        })
       });
       
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Failed to create page");
+      if (!response.ok) throw new Error(data.message || `Failed to ${editingPageId ? 'update' : 'create'} page`);
       
-      setNewPage({ title: '', content: '', status: 'publish', slug: '' });
-      setShowAddModal(false);
+      closeModal();
       fetchPages();
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const closeModal = () => {
+    setEditingPageId(null);
+    setFormData({ title: '', content: '', status: 'publish', slug: '' });
+    setShowAddModal(false);
   };
 
   const deletePage = async (id: number) => {
@@ -97,7 +123,7 @@ export default function AdminPages() {
           </div>
         </div>
         <button 
-          onClick={() => setShowAddModal(true)}
+          onClick={() => { setEditingPageId(null); setShowAddModal(true); }}
           className="bg-primary text-primary-foreground px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
         >
           <Icons.Plus className="w-5 h-5" />
@@ -115,10 +141,10 @@ export default function AdminPages() {
           <p>{error}</p>
         </div>
       ) : (
-        <div className="rounded-2xl bg-card border border-border overflow-hidden">
+        <div className="rounded-2xl bg-card border border-border overflow-hidden shadow-sm">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-secondary/30 text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+              <tr className="bg-secondary/30 text-muted-foreground text-[10px] font-black uppercase tracking-widest border-b border-border">
                 <th className="px-6 py-4">Title</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Date</th>
@@ -130,7 +156,7 @@ export default function AdminPages() {
                 <tr key={page.id} className="hover:bg-secondary/20 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
-                      <span className="font-bold text-sm text-[#2271b1] hover:underline cursor-pointer">
+                      <span className="font-bold text-sm text-[#2271b1] hover:text-[#135e96] cursor-pointer" onClick={() => handleEdit(page)}>
                         {page.title.rendered || '(no title)'}
                       </span>
                       <span className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-[300px]">
@@ -139,7 +165,7 @@ export default function AdminPages() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight ${
+                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${
                       page.status === 'publish' ? 'bg-emerald-500/10 text-emerald-600' :
                       page.status === 'draft' ? 'bg-amber-500/10 text-amber-600' :
                       'bg-slate-500/10 text-slate-600'
@@ -147,17 +173,25 @@ export default function AdminPages() {
                       {page.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-xs text-muted-foreground">
+                  <td className="px-6 py-4 text-xs text-muted-foreground font-medium">
                     {new Date(page.date).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                       <Link href={page.link} target="_blank" className="text-muted-foreground hover:text-primary p-2 transition-colors rounded-lg hover:bg-primary/10">
+                    <div className="flex items-center gap-1">
+                      <button 
+                        onClick={() => handleEdit(page)}
+                        className="text-muted-foreground hover:text-primary p-2 transition-colors rounded-lg hover:bg-primary/10"
+                        title="Edit Page"
+                      >
+                        <Icons.Edit className="w-4 h-4" />
+                      </button>
+                      <Link href={page.link} target="_blank" className="text-muted-foreground hover:text-primary p-2 transition-colors rounded-lg hover:bg-primary/10" title="View Live">
                         <Icons.ExternalLink className="w-4 h-4" />
                       </Link>
                       <button 
                         onClick={() => deletePage(page.id)}
                         className="text-muted-foreground hover:text-destructive p-2 transition-colors rounded-lg hover:bg-destructive/10"
+                        title="Move to Trash"
                       >
                         <Icons.Trash2 className="w-4 h-4" />
                       </button>
@@ -168,52 +202,65 @@ export default function AdminPages() {
             </tbody>
           </table>
           {pages.length === 0 && (
-            <div className="p-12 text-center text-muted-foreground italic">No pages found on your WordPress site.</div>
+            <div className="p-12 text-center text-muted-foreground italic text-sm">No pages found on your WordPress site.</div>
           )}
         </div>
       )}
 
-      {/* Add New Page Modal */}
+      {/* Page Editor Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-background rounded-3xl border border-border shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="bg-background rounded-3xl border border-border shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95">
             <div className="p-8 border-b border-border flex items-center justify-between bg-secondary/20">
-              <h3 className="text-xl font-bold">Add New WordPress Page</h3>
-              <button onClick={() => setShowAddModal(false)} className="hover:rotate-90 transition-transform">
+              <div>
+                <h3 className="text-xl font-bold">{editingPageId ? 'Edit Site Page' : 'Add New WordPress Page'}</h3>
+                {editingPageId && <p className="text-xs text-muted-foreground mt-1 font-mono uppercase tracking-widest">Page ID: #{editingPageId}</p>}
+              </div>
+              <button onClick={closeModal} className="hover:rotate-90 transition-transform p-2 bg-background rounded-full shadow-sm">
                 <Icons.X className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleCreate} className="p-8 space-y-6 overflow-y-auto max-h-[80vh]">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Page Title</label>
-                  <input required type="text" value={newPage.title} onChange={e => setNewPage({...newPage, title: e.target.value})} className="w-full bg-card border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/50 text-lg font-bold" placeholder="e.g. About Us" />
+            <form onSubmit={handleSave} className="flex flex-col h-[75vh]">
+              <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Page Title</label>
+                            <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-card border border-border rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/50 text-2xl font-bold placeholder:opacity-30" placeholder="Enter title here..." />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">HTML Content</label>
+                            <textarea rows={16} required value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className="w-full bg-card border border-border rounded-2xl px-6 py-6 outline-none focus:ring-2 focus:ring-primary/50 text-sm font-mono leading-relaxed min-h-[400px]" placeholder="Write your page content using HTML or standard text..." />
+                        </div>
+                    </div>
+                    <div className="space-y-6 bg-secondary/10 p-6 rounded-3xl border border-border flex flex-col justify-between">
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Publishing Status</label>
+                                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-white border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/50 text-xs font-bold uppercase tracking-widest">
+                                    <option value="publish">Published</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="private">Private</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">URL Slug</label>
+                                <input type="text" value={formData.slug} onChange={e => setFormData({...formData, slug: e.target.value})} className="w-full bg-white border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/50 text-xs font-mono" placeholder="slug-name" />
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-border space-y-4">
+                            <button type="submit" disabled={loading} className="w-full bg-[#2271b1] text-white py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2 hover:bg-[#135e96] active:scale-95 transition-all shadow-xl shadow-[#2271b1]/20">
+                                {loading ? <Icons.RefreshCW className="w-4 h-4 animate-spin" /> : <Icons.Check className="w-4 h-4" />}
+                                {editingPageId ? 'Update Live Page' : 'Publish Page'}
+                            </button>
+                            <button type="button" onClick={closeModal} className="w-full bg-white border border-border text-foreground/50 py-3 rounded-2xl font-bold text-xs hover:bg-red-50 hover:text-red-500 transition-all">
+                                Discard Changes
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Status</label>
-                    <select value={newPage.status} onChange={e => setNewPage({...newPage, status: e.target.value})} className="w-full bg-card border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/50 text-sm">
-                      <option value="publish">Publish Immediately</option>
-                      <option value="draft">Save as Draft</option>
-                      <option value="private">Private</option>
-                      <option value="pending">Pending Review</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">URL Slug</label>
-                    <input type="text" value={newPage.slug} onChange={e => setNewPage({...newPage, slug: e.target.value})} className="w-full bg-card border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/50 text-sm font-mono" placeholder="leave blank for auto-generate" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Page Content (HTML/Text)</label>
-                  <textarea rows={12} required value={newPage.content} onChange={e => setNewPage({...newPage, content: e.target.value})} className="w-full bg-card border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/50 text-sm font-mono leading-relaxed" placeholder="Write your page content here..." />
-                </div>
-              </div>
-              <div className="flex gap-4 pt-6 border-t border-border">
-                <button type="submit" disabled={loading} className="flex-1 bg-[#2271b1] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-[#135e96] active:scale-95 transition-all shadow-lg shadow-[#2271b1]/20">
-                  {loading ? <Icons.RefreshCW className="w-5 h-5 animate-spin" /> : <Icons.Check className="w-5 h-5" />}
-                  {newPage.status === 'publish' ? 'Publish Page' : 'Save Draft'}
-                </button>
               </div>
             </form>
           </div>
