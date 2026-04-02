@@ -15,12 +15,12 @@ export default function ShopLayout({ children }: ShopLayoutProps) {
           <Link href="/shop" className="text-2xl font-black tracking-tightest group">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-400 group-hover:from-indigo-400 group-hover:to-primary transition-all duration-700">LUMINA</span>
           </Link>
-          
+
           <nav className="hidden lg:flex items-center gap-8">
             {['Shop', 'Categories', 'Bestsellers', 'New Arrivals'].map((link) => (
-              <Link 
-                key={link} 
-                href="/shop/products" 
+              <Link
+                key={link}
+                href="/shop/products"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5"
               >
                 {link}
@@ -59,9 +59,9 @@ export default function ShopLayout({ children }: ShopLayoutProps) {
               Redefining high-performance tech and minimal aesthetics. Experience future of commerce today.
             </p>
             <div className="flex items-center gap-4">
-              <input 
-                type="email" 
-                placeholder="Join the waitlist..." 
+              <input
+                type="email"
+                placeholder="Join the waitlist..."
                 className="bg-secondary/50 border border-border px-6 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 w-64"
               />
               <button className="bg-foreground text-background px-8 py-3 rounded-xl font-bold hover:scale-105 transition-all active:scale-95">GO</button>
