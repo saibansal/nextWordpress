@@ -19,6 +19,8 @@ export default function AddNewProduct() {
   const [taxClasses, setTaxClasses] = useState<any[]>([]);
   const [globalAttributes, setGlobalAttributes] = useState<any[]>([]);
   const [selectedAttrId, setSelectedAttrId] = useState<string>('');
+  const [locations, setLocations] = useState<any[]>([]);
+
   
   const [formData, setFormData] = useState({
     name: '',
@@ -55,7 +57,9 @@ export default function AddNewProduct() {
     default_attributes: [] as any[],
     variations: [] as any[],
     images: [] as any[],
+    meta_data: [] as any[],
   });
+
 
   const [categories, setCategories] = useState<any[]>([]);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
@@ -92,12 +96,16 @@ export default function AddNewProduct() {
         if (shipRes.ok) setShippingClasses(await shipRes.json());
         if (taxRes.ok) setTaxClasses(await taxRes.json());
         if (attrRes.ok) setGlobalAttributes(await attrRes.json());
+
+        const savedLocs = localStorage.getItem('sakoon_locations');
+        if (savedLocs) setLocations(JSON.parse(savedLocs));
       } catch (err) {
         console.error("Failed to fetch data:", err);
       }
     }
     fetchData();
   }, []);
+
 
   const handleMediaSelect = (selectedImages: any[]) => {
     if (pickerMode === 'main') {
@@ -166,6 +174,25 @@ export default function AddNewProduct() {
       return { ...prev, categories: newCategories };
     });
   };
+
+  const handleLocationToggle = (id: string) => {
+    setFormData(prev => {
+      const meta = prev.meta_data || [];
+      const locMeta = meta.find((m: any) => m.key === '_sakoon_locations');
+      let currentLocs = locMeta ? locMeta.value : [];
+      
+      const newLocs = currentLocs.includes(id)
+        ? currentLocs.filter((l: string) => l !== id)
+        : [...currentLocs, id];
+        
+      const newMeta = locMeta
+        ? meta.map((m: any) => m.key === '_sakoon_locations' ? { ...m, value: newLocs } : m)
+        : [...meta, { key: '_sakoon_locations', value: newLocs }];
+        
+      return { ...prev, meta_data: newMeta };
+    });
+  };
+
   const tabs = [
     { id: 'general', label: 'General', icon: '⚙️' },
     { id: 'inventory', label: 'Inventory', icon: '📦' },
@@ -454,6 +481,28 @@ export default function AddNewProduct() {
                 <div className="p-4 py-3 flex justify-between bg-white"><button type="button" className="text-red-600 text-xs hover:underline">Cancel</button><button type="submit" disabled={loading} className="bg-[#2271b1] text-white px-5 py-1.5 rounded-sm font-bold text-xs flex items-center gap-2">{loading && <Icons.RefreshCW className="w-3 h-3 animate-spin" />} {loading ? 'Publishing...' : 'Publish'}</button></div>
             </div>
             <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm"><div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm">Product categories</div><div className="p-4 h-48 overflow-y-auto">{hierarchicalCategories.map(cat => (<div key={cat.id} className="flex gap-2 text-xs py-1" style={{ paddingLeft: `${cat.depth * 15}px` }}> <input type="checkbox" checked={!!formData.categories.find(c => c.id === cat.id)} onChange={() => handleCategoryToggle(cat.id)} /> {cat.name} </div>))}</div></div>
+            <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm">
+                <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm flex justify-between items-center">
+                    <span>Product Locations</span>
+                    <span className="text-[10px] bg-red-50 text-[#F2002D] px-2 py-0.5 rounded uppercase font-black tracking-widest">New</span>
+                </div>
+                <div className="p-4 space-y-2">
+                    {locations.map(loc => (
+                        <div key={loc.id} className="flex items-center gap-2 text-xs font-medium text-gray-700 hover:bg-gray-50 p-1 rounded transition-colors cursor-pointer" onClick={() => handleLocationToggle(loc.id)}>
+                            <input 
+                              type="checkbox" 
+                              readOnly
+                              checked={!!(formData.meta_data || []).find((m: any) => m.key === '_sakoon_locations')?.value?.includes(loc.id)} 
+                            />
+                            <span>{loc.name}</span>
+                        </div>
+                    ))}
+                    <div className="pt-2 border-t border-gray-100 mt-2">
+                        <p className="text-[10px] text-gray-400 italic">If no location is selected, the product will be visible across ALL branches (Global).</p>
+                    </div>
+                </div>
+            </div>
+
             <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm overflow-hidden">
                 <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm flex justify-between"><span>Product image</span></div>
                 <div className="p-4">

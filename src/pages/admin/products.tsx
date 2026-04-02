@@ -12,6 +12,7 @@ export default function AdminProducts() {
   const [syncProgress, setSyncProgress] = useState(0);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [locations, setLocations] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -101,6 +102,8 @@ export default function AdminProducts() {
 
   useEffect(() => {
     fetchAllProducts();
+    const saved = localStorage.getItem('sakoon_locations');
+    if (saved) setLocations(JSON.parse(saved));
   }, []);
 
   const toggleSelectAll = () => {
@@ -255,6 +258,7 @@ export default function AdminProducts() {
               <th className="px-3 py-3 font-bold w-24 text-center">Stock</th>
               <th className="px-3 py-3 font-bold w-32">Price</th>
               <th className="px-3 py-3 font-bold w-40">Categories</th>
+              <th className="px-3 py-3 font-bold w-40">Locations</th>
               <th className="px-3 py-3 font-bold w-32">Date</th>
             </tr>
           </thead>
@@ -301,6 +305,21 @@ export default function AdminProducts() {
                   {product.categories?.map((c: any) => (
                     <span key={c.id} className="hover:text-black cursor-pointer mr-1 underline decoration-dotted">{c.name},</span>
                   ))}
+                </td>
+                <td className="px-3 py-4 text-[#50575e] text-xs">
+                  {(() => {
+                    const locMeta = (product.meta_data || []).find((m: any) => m.key === '_sakoon_locations');
+                    const locationIds = locMeta ? locMeta.value : [];
+                    if (!locationIds || locationIds.length === 0) return <span className="bg-gray-100 px-2 py-0.5 rounded text-[10px] font-bold text-gray-400">GLOBAL</span>;
+                    return (
+                        <div className="flex flex-wrap gap-1">
+                            {locationIds.map((id: string) => {
+                                const loc = locations.find(l => l.id === id);
+                                return <span key={id} className="bg-[#2271b1]/10 text-[#2271b1] px-2 py-0.5 rounded text-[10px] font-bold uppercase">{loc ? loc.name.replace('Sakoon ', '') : `ID: ${id}`}</span>;
+                            })}
+                        </div>
+                    );
+                  })()}
                 </td>
                 <td className="px-3 py-4 text-[#50575e] leading-tight text-xs">
                   <span className="block font-semibold text-[#1d2327]">Published</span>

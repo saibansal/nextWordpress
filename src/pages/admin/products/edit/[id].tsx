@@ -22,6 +22,8 @@ export default function EditProduct() {
     const [taxClasses, setTaxClasses] = useState<any[]>([]);
     const [globalAttributes, setGlobalAttributes] = useState<any[]>([]);
     const [selectedAttrId, setSelectedAttrId] = useState<string>('');
+    const [locations, setLocations] = useState<any[]>([]);
+
 
     const [formData, setFormData] = useState<any>({
         name: '', type: 'simple', status: 'publish', virtual: false, downloadable: false,
@@ -85,6 +87,10 @@ export default function EditProduct() {
                         }))
                     });
                 }
+                
+                const savedLocs = localStorage.getItem('sakoon_locations');
+                if (savedLocs) setLocations(JSON.parse(savedLocs));
+
             } catch (err) {
 
                 console.error("Failed to fetch product data:", err);
@@ -145,10 +151,12 @@ export default function EditProduct() {
                 categories: formData.categories.map((c: any) => ({ id: c.id })),
                 attributes: finalAttributes,
                 images: finalImages,
+                meta_data: formData.meta_data || [],
                 variations: formData.type === 'variable' ? (formData.variations || []).map((v: any) => ({
                     ...v, attributes: v.attributes.map((a: any) => ({ id: a.id, name: a.name, option: a.option }))
                 })) : []
             };
+
 
             const response = await fetch(`/api/wc/products/${id}`, {
                 method: 'PUT',
@@ -190,6 +198,25 @@ export default function EditProduct() {
             return { ...prev, categories: newCats };
         });
     };
+
+    const handleLocationToggle = (id: string) => {
+        setFormData((prev: any) => {
+          const meta = prev.meta_data || [];
+          const locMeta = meta.find((m: any) => m.key === '_sakoon_locations');
+          let currentLocs = locMeta ? locMeta.value : [];
+          
+          const newLocs = currentLocs.includes(id)
+            ? currentLocs.filter((l: string) => l !== id)
+            : [...currentLocs, id];
+            
+          const newMeta = locMeta
+            ? meta.map((m: any) => m.key === '_sakoon_locations' ? { ...m, value: newLocs } : m)
+            : [...meta, { key: '_sakoon_locations', value: newLocs }];
+            
+          return { ...prev, meta_data: newMeta };
+        });
+      };
+
 
     const toggleAttrExpand = (uniqueKey: any) => {
         setFormData((prev: any) => ({
@@ -450,6 +477,29 @@ export default function EditProduct() {
                         </div>
 
                         <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm"><div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm">Product categories</div><div className="p-4 h-48 overflow-y-auto">{hierarchicalCategories.map(cat => (<div key={cat.id} className="flex gap-2 text-xs py-1" style={{ paddingLeft: `${cat.depth * 15}px` }}> <input type="checkbox" checked={!!formData.categories.find((c: any) => c.id === cat.id)} onChange={() => handleCategoryToggle(cat.id)} /> {cat.name} </div>))}</div></div>
+
+                        <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm">
+                            <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm flex justify-between items-center">
+                                <span>Product Locations</span>
+                                <span className="text-[10px] bg-red-50 text-[#F2002D] px-2 py-0.5 rounded uppercase font-black tracking-widest">New</span>
+                            </div>
+                            <div className="p-4 space-y-2">
+                                {locations.map(loc => (
+                                    <div key={loc.id} className="flex items-center gap-2 text-xs font-medium text-gray-700 hover:bg-gray-50 p-1 rounded transition-colors cursor-pointer" onClick={() => handleLocationToggle(loc.id)}>
+                                        <input 
+                                          type="checkbox" 
+                                          readOnly
+                                          checked={!!(formData.meta_data || []).find((m: any) => m.key === '_sakoon_locations')?.value?.includes(loc.id)} 
+                                        />
+                                        <span>{loc.name}</span>
+                                    </div>
+                                ))}
+                                <div className="pt-2 border-t border-gray-100 mt-2">
+                                    <p className="text-[10px] text-gray-400 italic">If no location is selected, the product will be visible across ALL branches (Global).</p>
+                                </div>
+                            </div>
+                        </div>
+
 
                         <div className="bg-white border border-[#dcdcde] shadow-sm rounded-sm">
                             <div className="px-4 py-2 bg-[#f6f7f7] border-b border-[#dcdcde] font-bold text-sm flex justify-between"><span>Product image</span></div>
