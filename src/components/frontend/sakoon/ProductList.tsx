@@ -42,6 +42,12 @@ export default function ProductList({ categorySlug, showLocationSpecials = true,
                 if (categorySlug) url.searchParams.append('category', categorySlug);
 
                 const response = await fetch(url.toString());
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
                 const data = await response.json();
 
                 const filtered = data.filter((p: any) => {
@@ -139,9 +145,9 @@ export default function ProductList({ categorySlug, showLocationSpecials = true,
                     <div
                         key={product.id}
                         onClick={() => handleProductClick(product)}
-                        className="group bg-white rounded-[3rem] overflow-hidden hover:shadow-2xl hover:shadow-black/5 transition-all duration-700 relative border border-gray-50 cursor-pointer"
+                        className="group bg-white overflow-hidden hover:shadow-2xl hover:shadow-black/5 transition-all duration-700 relative border border-gray-50 cursor-pointer"
                     >
-                        <div className="relative h-72 overflow-hidden">
+                        <div className="relative">
                             {product.images?.[0] ? (
                                 <img src={product.images[0].src} alt={product.name} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110" />
                             ) : (

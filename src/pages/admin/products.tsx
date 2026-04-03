@@ -33,12 +33,22 @@ export default function AdminProducts() {
 
       const response = await fetch(url.toString());
 
+      const contentType = response.headers.get("content-type");
+      let data: any;
+      let errorMessage = 'Failed to fetch products';
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch products');
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } else {
+          const errorText = await response.text();
+          errorMessage = errorText.length > 100 ? `Server Error (${response.status})` : errorText;
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      data = await response.json();
 
       if (append) {
         setProducts(prev => [...prev, ...data]);
@@ -101,7 +111,6 @@ export default function AdminProducts() {
   }, [page, fetchProducts]);
 
   useEffect(() => {
-    fetchAllProducts();
     const saved = localStorage.getItem('sakoon_locations');
     if (saved) setLocations(JSON.parse(saved));
   }, []);
@@ -130,8 +139,15 @@ export default function AdminProducts() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete product');
+        const contentType = response.headers.get("content-type");
+        let errorMessage = 'Failed to delete product';
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } else {
+          errorMessage = `Server Error (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       // Remove from state immediately
@@ -312,12 +328,12 @@ export default function AdminProducts() {
                     const locationIds = locMeta ? locMeta.value : [];
                     if (!locationIds || locationIds.length === 0) return <span className="bg-gray-100 px-2 py-0.5 rounded text-[10px] font-bold text-gray-400">GLOBAL</span>;
                     return (
-                        <div className="flex flex-wrap gap-1">
-                            {locationIds.map((id: string) => {
-                                const loc = locations.find(l => l.id === id);
-                                return <span key={id} className="bg-[#2271b1]/10 text-[#2271b1] px-2 py-0.5 rounded text-[10px] font-bold uppercase">{loc ? loc.name.replace('Sakoon ', '') : `ID: ${id}`}</span>;
-                            })}
-                        </div>
+                      <div className="flex flex-wrap gap-1">
+                        {locationIds.map((id: string) => {
+                          const loc = locations.find(l => l.id === id);
+                          return <span key={id} className="bg-[#2271b1]/10 text-[#2271b1] px-2 py-0.5 rounded text-[10px] font-bold uppercase">{loc ? loc.name.replace('Sakoon ', '') : `ID: ${id}`}</span>;
+                        })}
+                      </div>
                     );
                   })()}
                 </td>

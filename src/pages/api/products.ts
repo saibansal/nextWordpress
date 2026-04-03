@@ -7,14 +7,13 @@ export default async function handler(
 ) {
   if (req.method === 'GET') {
     const { search, page, per_page } = req.query;
+    const params: any = {
+      page: page || 1,
+      per_page: per_page || 20,
+    };
+    if (search) params.search = search;
+
     try {
-      const params: any = {
-        page: page || 1,
-        per_page: per_page || 20,
-      };
-
-      if (search) params.search = search;
-
       const response = await api.get('products', params);
       
       const totalPages = response.headers?.['x-wp-totalpages'];
@@ -25,10 +24,25 @@ export default async function handler(
 
       return res.status(200).json(response.data);
     } catch (error: any) {
-      console.error('WC GET PRODUCTS ERROR:', error.response?.data || error.message);
-      return res.status(error.response?.status || 500).json({
+      const errorData = error.response?.data;
+      const status = error.response?.status || 500;
+      
+      console.error('--- WC API ERROR (Products) ---');
+      console.error('URL: products');
+      console.error('Params:', params);
+      console.error('Status:', status);
+      
+      if (typeof errorData === 'string' && errorData.includes('<!DOCTYPE')) {
+        console.error('Response is HTML (Potential Server Error)');
+      } else {
+        console.error('Error Data:', errorData || error.message);
+      }
+      console.error('--------------------------------');
+
+      return res.status(status).json({
         message: 'Failed to fetch products',
-        error: error.response?.data || error.message
+        error: errorData || error.message,
+        isHtml: typeof errorData === 'string' && errorData.includes('<!DOCTYPE')
       });
     }
   }

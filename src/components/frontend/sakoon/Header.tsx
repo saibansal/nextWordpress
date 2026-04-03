@@ -57,7 +57,7 @@ export default function Header() {
         <button
           onClick={() => {
             if (selectedLocation) {
-                clearLocation();
+              clearLocation();
             }
             setPopupOpen(true);
           }}

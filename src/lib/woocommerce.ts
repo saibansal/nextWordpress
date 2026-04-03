@@ -1,17 +1,44 @@
 import WooCommerceRestApi from "@woocommerce/woocommerce-rest-api";
 import https from 'https';
 
+const wpUrl = process.env.NEXT_PUBLIC_WORDPRESS_URL;
+
+if (!wpUrl) {
+    console.warn("WARNING: NEXT_PUBLIC_WORDPRESS_URL is not defined in .env. Falling back to localhost.");
+}
+
 const api = new WooCommerceRestApi({
-  url: process.env.NEXT_PUBLIC_WORDPRESS_URL || "http://localhost/wordpress/wordpress-backend",
+  url: wpUrl || "http://localhost/wordpress/wordpress-backend",
   consumerKey: process.env.WC_CONSUMER_KEY || "",
   consumerSecret: process.env.WC_CONSUMER_SECRET || "",
   version: "wc/v3",
-  queryStringAuth: true, // Forces credentials to be sent in the URL (More compatible for HTTP)
+  queryStringAuth: true,
   axiosConfig: {
     headers: {
       "Content-Type": "application/json",
     },
-    // Proper way to ignore self-signed certificates or SSL issues during dev
+    httpsAgent: new https.Agent({
+        rejectUnauthorized: false
+    })
+  }
+});
+
+// Create a separate instance for WP REST API calls
+const wpAuth = process.env.WP_APP_PASSWORD 
+  ? { Authorization: `Basic ${Buffer.from(`${process.env.WP_USERNAME}:${process.env.WP_APP_PASSWORD}`).toString('base64')}` }
+  : {};
+
+export const wpApi = new WooCommerceRestApi({
+  url: wpUrl || "http://localhost/wordpress/wordpress-backend",
+  consumerKey: process.env.WC_CONSUMER_KEY || "",
+  consumerSecret: process.env.WC_CONSUMER_SECRET || "",
+  version: "wp/v2",
+  queryStringAuth: true,
+  axiosConfig: {
+    headers: {
+      "Content-Type": "application/json",
+      ...wpAuth
+    },
     httpsAgent: new https.Agent({
         rejectUnauthorized: false
     })
