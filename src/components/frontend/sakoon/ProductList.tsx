@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useLocation } from '../../../context/LocationContext';
 import { Icons } from '../../Icons';
 
@@ -9,6 +10,7 @@ interface ProductListProps {
 }
 
 export default function ProductList({ categorySlug, showLocationSpecials = true, layout = 'grid' }: ProductListProps) {
+    const router = useRouter();
     const { selectedLocation, setPopupOpen, clearLocation, isLoading } = useLocation();
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -77,7 +79,8 @@ export default function ProductList({ categorySlug, showLocationSpecials = true,
             setPopupOpen(true);
             return;
         }
-        console.log('Product clicked:', product.id);
+        // Navigate to product detail page
+        router.push(`/sakoon/product/${product.id}`);
     };
 
     if (loading) {

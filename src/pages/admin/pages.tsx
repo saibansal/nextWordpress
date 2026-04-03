@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { Icons } from '../../components/Icons';
-import Link from 'next/link';
 
 export default function AdminPages() {
   const [pages, setPages] = useState<any[]>([]);
@@ -31,13 +30,20 @@ export default function AdminPages() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch pages from WordPress");
+        if (response.status === 503) {
+          setError(`WordPress not configured. ${data.hint || 'Set WP_USERNAME and WP_APP_PASSWORD in .env.local'}`);
+          setPages([]);
+        } else {
+          throw new Error(data.message || "Failed to fetch pages from WordPress");
+        }
+      } else {
+        setPages(data);
+        setError(null);
       }
-      
-      setPages(data);
     } catch (err: any) {
       console.error("Error fetching pages:", err);
-      setError(err.message);
+      setError(err.message || "Unable to connect to WordPress");
+      setPages([]);
     } finally {
       setLoading(false);
     }
@@ -159,9 +165,6 @@ export default function AdminPages() {
                       <span className="font-bold text-sm text-[#2271b1] hover:text-[#135e96] cursor-pointer" onClick={() => handleEdit(page)}>
                         {page.title.rendered || '(no title)'}
                       </span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-[300px]">
-                        {page.link}
-                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -185,9 +188,6 @@ export default function AdminPages() {
                       >
                         <Icons.Edit className="w-4 h-4" />
                       </button>
-                      <Link href={page.link} target="_blank" className="text-muted-foreground hover:text-primary p-2 transition-colors rounded-lg hover:bg-primary/10" title="View Live">
-                        <Icons.ExternalLink className="w-4 h-4" />
-                      </Link>
                       <button 
                         onClick={() => deletePage(page.id)}
                         className="text-muted-foreground hover:text-destructive p-2 transition-colors rounded-lg hover:bg-destructive/10"

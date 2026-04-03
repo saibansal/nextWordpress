@@ -27,6 +27,16 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('sakoon_selected_location');
     if (saved) {
       setSelectedLocation(JSON.parse(saved));
+    } else {
+      // Set Fremont as default location
+      const defaultLocation: Location = {
+        id: '1',
+        name: 'Sakoon Fremont',
+        address: '35700 Fremont Blvd, Fremont, CA 94536',
+        phone: '(510) 744-7000'
+      };
+      setSelectedLocation(defaultLocation);
+      localStorage.setItem('sakoon_selected_location', JSON.stringify(defaultLocation));
     }
     setIsLoading(false);
   }, []);

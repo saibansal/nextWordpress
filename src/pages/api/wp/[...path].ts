@@ -12,6 +12,15 @@ export default async function handler(
   const username = process.env.WP_USERNAME || '';
   const appPassword = process.env.WP_APP_PASSWORD || '';
   
+  // Check if WordPress is available (skip fetch if localhost and no credentials)
+  if (wpUrl.includes('localhost') && !appPassword) {
+    console.warn(`[WP API] Skipping localhost request - no credentials configured`);
+    return res.status(503).json({ 
+      message: 'WordPress backend not configured for local development',
+      hint: 'Set WP_USERNAME and WP_APP_PASSWORD in .env.local to connect to a live WordPress instance, or deploy to a server with WordPress running at ' + wpUrl
+    });
+  }
+  
   const auth = Buffer.from(`${username}:${appPassword}`).toString('base64');
   
   const url = new URL(`${wpUrl}/wp-json/wp/v2/${endpoint}`);
@@ -20,6 +29,9 @@ export default async function handler(
   });
 
   try {
+    console.log(`[WP API] Requesting: ${url.toString()}`);
+    console.log(`[WP API] Auth: ${username}:****`);
+    
     const response = await fetch(url.toString(), {
       method: req.method,
       headers: {
@@ -28,6 +40,20 @@ export default async function handler(
       },
       body: ['POST', 'PUT'].includes(req.method!) ? JSON.stringify(req.body) : undefined,
     });
+
+    // Check if response is JSON before trying to parse
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error(`[WP API] WordPress returned non-JSON response: ${contentType}, Status: ${response.status}`);
+      const textResponse = await response.text();
+      console.error(`[WP API] Response body (first 500 chars):`, textResponse.substring(0, 500));
+      return res.status(502).json({ 
+        message: 'WordPress API returned HTML instead of JSON',
+        contentType: contentType,
+        status: response.status,
+        hint: 'Check WordPress URL and credentials in .env.local'
+      });
+    }
 
     const data = await response.json();
     
@@ -45,9 +71,13 @@ export default async function handler(
     return res.status(200).json(data);
   } catch (error: any) {
     console.error(`WP ADM FETCH CRASH [${endpoint}]:`, error.message);
+    console.error(`WP URL: ${process.env.NEXT_PUBLIC_WORDPRESS_URL}`);
+    console.error(`WP Username: ${process.env.WP_USERNAME}`);
+    console.error(`Full Error:`, error);
     return res.status(500).json({ 
       message: `Failed to fetch ${endpoint} from WP`, 
-      error: error.message 
+      error: error.message,
+      url: url.toString()
     });
   }
 }

@@ -41,6 +41,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
       title: 'Content',
       items: [
         { name: 'Pages', href: '/admin/pages', icon: Icons.FileText },
+        { name: 'Homepage', href: '/admin/homepage', icon: Icons.Image },
         { name: 'Media', href: '/admin/media', icon: Icons.Image },
         { name: 'Comments', href: '/admin/comments', icon: Icons.MessageSquare },
       ]
