@@ -53,7 +53,10 @@ export default function Header() {
         })}
       </nav>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        <Link href="/shop/cart" className="hidden sm:inline-flex items-center justify-center rounded-full border border-[#F2002D] text-[#F2002D] w-10 h-10 hover:bg-[#F2002D] hover:text-white transition-all">
+          <Icons.ShoppingCart className="w-5 h-5" />
+        </Link>
         <button
           onClick={() => {
             if (selectedLocation) {
@@ -61,7 +64,7 @@ export default function Header() {
             }
             setPopupOpen(true);
           }}
-          className="hidden sm:block bg-[#F2002D] text-white px-6 py-2.5 rounded-full text-[11px] font-black tracking-widest hover:bg-black transition-all"
+          className="hidden sm:flex items-center gap-2 bg-[#F2002D] text-white px-6 py-2.5 rounded-full text-[11px] font-black tracking-widest hover:bg-black transition-all"
         >
           {mounted && selectedLocation ? 'CHANGE LOCATION' : 'SELECT LOCATION'}
         </button>

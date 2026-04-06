@@ -1,108 +1,130 @@
-import React from 'react';
-import ShopLayout from '../../components/ShopLayout';
-import { Icons } from '../../components/Icons';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import SakoonLayout from '../../components/frontend/sakoon/SakoonLayout';
+import { useLocation } from '../../context/LocationContext';
+
+interface HomepageData {
+  hero: {
+    title: string;
+    subtitle: string;
+    backgroundImage: string;
+    ctaText: string;
+    ctaLink: string;
+  };
+  welcome: {
+    title: string;
+    description: string;
+    image: string;
+    bottomText: string;
+  };
+}
 
 export default function ShopHome() {
-  const featuredProducts = [
-    { id: 1, name: 'LuminaBook Pro', price: '$1,999', category: 'Laptops', image: '/hero.png' },
-    { id: 2, name: 'AirSync Max', price: '$549', category: 'Audio', image: '/products.png' },
-    { id: 3, name: 'S-Pro Tablet', price: '$899', category: 'Tablets', image: '/products.png' },
-    { id: 4, name: 'TimeGen Watch', price: '$399', category: 'Wearables', image: '/products.png' },
-  ];
+  const [homepageData, setHomepageData] = useState<HomepageData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { selectedLocation, isLoading: locationLoading } = useLocation();
+
+  const fetchHomepageData = async (locationId: string) => {
+    try {
+      setLoading(true);
+      console.log('[ShopHome] Fetching data for location:', locationId);
+      // Add cache-busting parameter to ensure fresh data
+      const response = await fetch(`/api/homepage?location=${locationId}&t=${Date.now()}`);
+      const data = await response.json();
+      console.log('[ShopHome] Fetched data:', data);
+      setHomepageData(data);
+    } catch (error) {
+      console.error('Failed to fetch homepage data:', error);
+      // Fallback data
+      setHomepageData({
+        hero: {
+          title: 'CELEBRATING INDIAN FLAVOURS',
+          subtitle: 'A Culinary Journey Through India',
+          backgroundImage: 'https://sakoon.vismaad.com/wp-content/uploads/2026/03/fremont.webp',
+          ctaText: 'Explore Our Menu',
+          ctaLink: '/shop/menu'
+        },
+        welcome: {
+          title: 'Welcome to Sakoon',
+          description: 'Sakoon invites you on a culinary journey that transcends borders and awakens your senses. Step into a world of opulence and flavor, where timeless traditions of Indian cuisine blend seamlessly with contemporary elegance at four locations in the Bay Area.',
+          image: 'https://sakoon.vismaad.com/wp-content/uploads/2026/03/3.webp',
+          bottomText: 'At Sakoon, we have mastered the art of Indian fine dining, curating a menu that showcases the finest culinary treasures from across the subcontinent. Each dish is a symphony of flavors, meticulously prepared by our skilled chefs, using the freshest locally sourced produce and the exotic spices from India.'
+        }
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Wait for location context to load, then fetch data
+  useEffect(() => {
+    if (!locationLoading && selectedLocation?.id) {
+      console.log('[ShopHome] Location ready:', selectedLocation.id);
+      fetchHomepageData(selectedLocation.id);
+    }
+  }, [selectedLocation?.id, locationLoading]);
+
+
+  if (loading) {
+    return (
+      <SakoonLayout title="Loading...">
+        <div className="h-[85vh] flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-gray-100 border-t-[#F2002D] rounded-full animate-spin"></div>
+        </div>
+      </SakoonLayout>
+    );
+  }
 
   return (
-    <ShopLayout>
+    <SakoonLayout title={homepageData?.hero.title || "Celebrating Indian Flavours"}>
       {/* Hero Section */}
-      <section className="relative px-8 mb-24">
-        <div className="max-w-7xl mx-auto rounded-[2rem] overflow-hidden bg-foreground relative min-h-[600px] flex items-center">
-          <img 
-            src="/hero.png" 
-            alt="Hero Visual" 
-            className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay group-hover:scale-105 transition-all duration-[3000ms]"
-          />
-          <div className="relative z-10 p-12 lg:p-20 max-w-2xl">
-            <span className="inline-block px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest mb-6">
-              Spring Collection 2024
-            </span>
-            <h1 className="text-6xl md:text-8xl font-black text-white leading-tight mb-8 tracking-tighter">
-              BEYOND THE <br />
-              <span className="text-primary italic">ORDINARY.</span>
-            </h1>
-            <p className="text-white/70 text-lg mb-10 leading-relaxed max-w-sm">
-              Discover a new era of high-precision tech and minimalist craftsmanship. Designed for those who demand excellence.
-            </p>
-            <div className="flex items-center gap-6">
-              <Link href="/shop/products" className="bg-white text-black px-10 py-4 rounded-2xl font-black hover:scale-105 transition-all active:scale-95 text-sm uppercase tracking-widest">
-                Explore Now
-              </Link>
-              <Link href="#" className="text-white font-bold flex items-center gap-3 hover:gap-5 transition-all text-sm uppercase tracking-widest">
-                Learn More <Icons.ArrowUpRight className="w-5 h-5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <section className="relative h-[85vh] flex items-center justify-center overflow-hidden">
+        <img
+          src={homepageData?.hero.backgroundImage || "https://sakoon.vismaad.com/wp-content/uploads/2026/03/fremont.webp"}
+          alt="Sakoon Hero"
+          className="absolute inset-0 w-full h-full object-cover brightness-90 transition-transform duration-[10s] hover:scale-110"
+        />
 
-      {/* Categories */}
-      <section className="px-8 max-w-7xl mx-auto mb-32 grid grid-cols-2 md:grid-cols-4 gap-8">
-        {['Laptops', 'Audio', 'Tablets', 'Wearables'].map((cat) => (
-          <div key={cat} className="group p-8 rounded-3xl bg-card border border-border hover:border-primary/50 transition-all cursor-pointer relative overflow-hidden">
-            <h3 className="font-black text-xl mb-2 relative z-10">{cat}</h3>
-            <p className="text-muted-foreground text-sm relative z-10">Browse Items</p>
-            <Icons.Package className="w-20 h-20 absolute -right-4 -bottom-4 opacity-5 group-hover:scale-125 transition-transform" />
-          </div>
-        ))}
-      </section>
-
-      {/* Featured Products */}
-      <section className="px-8 max-w-7xl mx-auto mb-20">
-        <div className="flex items-end justify-between mb-16">
-          <div>
-            <span className="text-primary font-black uppercase text-xs tracking-widest mb-4 block">Our Picks</span>
-            <h2 className="text-5xl font-black tracking-tight">Featured Selection</h2>
-          </div>
-          <Link href="/shop/products" className="text-sm font-bold uppercase tracking-widest border-b-2 border-primary pb-1">Shop Everything</Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
-          {featuredProducts.map((product) => (
-            <div key={product.id} className="group relative">
-              <div className="aspect-[4/5] rounded-[2rem] bg-secondary/50 overflow-hidden mb-6 relative hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500">
-                <img 
-                  src={product.image} 
-                  alt={product.name} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700" 
-                />
-                <button className="absolute bottom-6 right-6 w-14 h-14 bg-white text-black rounded-2xl flex items-center justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 shadow-xl shadow-black/20">
-                  <Icons.ShoppingCart className="w-6 h-6" />
-                </button>
-              </div>
-              <div className="px-2">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 block">{product.category}</span>
-                <h3 className="font-bold text-lg group-hover:text-primary transition-colors mb-1">{product.name}</h3>
-                <p className="font-black text-xl tracking-tighter">{product.price}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Brand Ethos */}
-      <section className="px-8 py-32 bg-secondary/30">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-12">
-            <Icons.Dashboard className="w-10 h-10" />
-          </div>
-          <h2 className="text-4xl md:text-5xl font-black mb-10 tracking-tight leading-tight">
-            Designed for a life without boundaries. Built to last for generations.
-          </h2>
-          <p className="text-muted-foreground text-xl mb-12 italic leading-relaxed">
-            "Everything we make is a statement. A statement that premium tech shouldn't compromise on durability or ethical sourcing. This is Lumina."
+        <div className="relative z-10 text-center text-white px-4">
+          <h1 className="text-4xl md:text-7xl font-rubik font-black tracking-tight drop-shadow-2xl mb-6">
+            {homepageData?.hero.title || "CELEBRATING INDIAN FLAVOURS"}
+          </h1>
+          <p className="text-lg md:text-xl font-medium tracking-widest mb-12 text-[#F2002D]">
+            {homepageData?.hero.subtitle || "A Culinary Journey Through India"}
           </p>
-          <div className="h-px w-20 bg-primary mx-auto"></div>
+          <Link
+            href={homepageData?.hero.ctaLink || "/shop/menu"}
+            className="inline-block bg-[#F2002D] text-white px-12 py-4 rounded-full font-black text-lg uppercase tracking-widest hover:bg-white hover:text-[#F2002D] transition-all duration-300 shadow-2xl shadow-[#F2002D]/30"
+          >
+            {homepageData?.hero.ctaText || "Explore Our Menu"}
+          </Link>
         </div>
       </section>
-    </ShopLayout>
+
+      {/* Welcome Section */}
+      <section className="py-24 px-6 md:px-16 max-w-7xl mx-auto text-center">
+        <div className="mb-20">
+          <h2 className="text-3xl md:text-4xl font-rubik font-black mb-12 text-[#1b1b1b]">
+            {homepageData?.welcome.title || "Welcome to Sakoon"}
+          </h2>
+          <p className="text-lg md:text-2xl text-[#1b1b1b] font-medium leading-[1.6] max-w-5xl mx-auto mb-12">
+            {homepageData?.welcome.description || "Sakoon invites you on a culinary journey..."}
+          </p>
+          <div className="w-20 h-0.5 bg-[#F2002D] mx-auto mb-16"></div>
+
+          <div className="relative rounded-3xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] mb-24 group">
+            <img
+              src={homepageData?.welcome.image || "https://sakoon.vismaad.com/wp-content/uploads/2026/03/3.webp"}
+              alt="Sakoon Experience"
+              className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+          </div>
+
+          <p className="text-lg md:text-xl text-gray-600 leading-[1.8] max-w-4xl mx-auto">
+            {homepageData?.welcome.bottomText || "At Sakoon, we have mastered the art of Indian fine dining..."}
+          </p>
+        </div>
+      </section>
+    </SakoonLayout>
   );
 }

@@ -58,6 +58,7 @@ export default function AddNewProduct() {
     variations: [] as any[],
     images: [] as any[],
     meta_data: [] as any[],
+    addon_packages: [] as any[],
   });
 
 
@@ -137,6 +138,8 @@ export default function AddNewProduct() {
         options: (attr.value_string || '').split('|').map((v: string) => v.trim()).filter((v: string) => v !== '')
       }));
 
+      const addonMeta = { key: '_addon_packages', value: formData.addon_packages || [] };
+      const filteredMeta = (formData.meta_data || []).filter((m: any) => m.key !== '_addon_packages');
       const productPayload = {
         ...formData,
         categories: formData.categories.map((c: any) => ({ id: c.id })),
@@ -146,7 +149,7 @@ export default function AddNewProduct() {
             ...v,
             attributes: v.attributes.map((a: any) => ({ id: a.id, name: a.name, option: a.option }))
         })) : [],
-        meta_data: formData.meta_data || []
+        meta_data: [...filteredMeta, addonMeta]
       };
 
       const response = await fetch('/api/products', {
@@ -196,12 +199,79 @@ export default function AddNewProduct() {
     });
   };
 
+  const addAddonGroup = () => {
+    setFormData(prev => ({
+      ...prev,
+      addon_packages: [
+        ...prev.addon_packages,
+        {
+          id: Date.now(),
+          title: 'New package group',
+          instructions: 'Choose any 1 from the following',
+          selection_type: 'single',
+          min_selected: 1,
+          items: [
+            { id: Date.now() + 1, name: '', cost: '' }
+          ]
+        }
+      ]
+    }));
+  };
+
+  const removeAddonGroup = (groupId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      addon_packages: prev.addon_packages.filter((group: any) => group.id !== groupId)
+    }));
+  };
+
+  const updateAddonGroup = (groupId: number, changes: any) => {
+    setFormData(prev => ({
+      ...prev,
+      addon_packages: prev.addon_packages.map((group: any) => group.id === groupId ? { ...group, ...changes } : group)
+    }));
+  };
+
+  const addAddonItem = (groupId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      addon_packages: prev.addon_packages.map((group: any) => group.id === groupId ? {
+        ...group,
+        items: [...group.items, { id: Date.now(), name: '', cost: '' }]
+      } : group)
+    }));
+  };
+
+  const updateAddonItem = (groupId: number, itemId: number, changes: any) => {
+    setFormData(prev => ({
+      ...prev,
+      addon_packages: prev.addon_packages.map((group: any) => {
+        if (group.id !== groupId) return group;
+        return {
+          ...group,
+          items: group.items.map((item: any) => item.id === itemId ? { ...item, ...changes } : item)
+        };
+      })
+    }));
+  };
+
+  const removeAddonItem = (groupId: number, itemId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      addon_packages: prev.addon_packages.map((group: any) => group.id === groupId ? {
+        ...group,
+        items: group.items.filter((item: any) => item.id !== itemId)
+      } : group)
+    }));
+  };
+
   const tabs = [
     { id: 'general', label: 'General', icon: '⚙️' },
     { id: 'inventory', label: 'Inventory', icon: '📦' },
     { id: 'shipping', label: 'Shipping', icon: '🚛' },
     { id: 'linked', label: 'Linked Products', icon: '🔗' },
     { id: 'attributes', label: 'Attributes', icon: '🏷️' },
+    { id: 'addons', label: 'Addon Packages', icon: '➕' },
     { id: 'advanced', label: 'Advanced', icon: '⭐' },
   ];
   const getDynamicTabs = () => {
@@ -422,6 +492,55 @@ export default function AddNewProduct() {
                                         <span className="text-xs text-gray-500">Allow customers to leave reviews</span>
                                     </div>
                                 </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'addons' && (
+                            <div className="space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-[#1d2327]">Addon Packages</h3>
+                                        <p className="text-xs text-gray-500">Add package groups and item costs for this product.</p>
+                                    </div>
+                                    <button type="button" onClick={addAddonGroup} className="bg-[#2271b1] text-white px-3 py-2 rounded-sm text-xs font-semibold hover:bg-[#135e96]">Add package group</button>
+                                </div>
+                                {formData.addon_packages?.length === 0 ? (
+                                    <div className="p-4 border border-dashed border-[#dcdcde] rounded-sm text-sm text-gray-500">No addon packages yet. Use the button above to add your first package group.</div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {formData.addon_packages.map((group: any) => (
+                                            <div key={group.id} className="rounded-sm border border-[#dcdcde] bg-white shadow-sm overflow-hidden">
+                                                <div className="p-4 border-b border-[#f0f0f1]">
+                                                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_160px] gap-3 mb-3">
+                                                        <input type="text" className="w-full border border-[#8c8f94] px-3 py-2 outline-none" value={group.title} placeholder="Package group title" onChange={e => updateAddonGroup(group.id, { title: e.target.value })} />
+                                                        <input type="text" className="w-full border border-[#8c8f94] px-3 py-2 outline-none" value={group.instructions || 'Choose any 1 from the following'} placeholder="Instructions" onChange={e => updateAddonGroup(group.id, { instructions: e.target.value })} />
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-[160px_120px] gap-3 mb-3">
+                                                        <select className="border border-[#8c8f94] px-3 py-2 bg-white outline-none" value={group.selection_type} onChange={e => updateAddonGroup(group.id, { selection_type: e.target.value, min_selected: e.target.value === 'single' ? 1 : group.min_selected || 1 })}>
+                                                            <option value="single">Radio</option>
+                                                            <option value="multiple">Checkbox</option>
+                                                        </select>
+                                                        <input type="number" min={1} disabled={group.selection_type === 'single'} className="w-full border border-[#8c8f94] px-3 py-2 outline-none disabled:cursor-not-allowed disabled:bg-[#f5f5f5]" value={group.min_selected || 1} placeholder="Select min option" onChange={e => updateAddonGroup(group.id, { min_selected: Math.max(1, Number(e.target.value) || 1) })} />
+                                                    </div>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <p className="text-[11px] text-gray-500">{group.selection_type === 'multiple' ? `Select at least ${group.min_selected || 1} option${(group.min_selected || 1) === 1 ? '' : 's'} from this package.` : 'Choose one option from this package.'}</p>
+                                                        <button type="button" onClick={() => removeAddonGroup(group.id)} className="text-red-600 text-xs font-semibold hover:underline">Remove group</button>
+                                                    </div>
+                                                </div>
+                                                <div className="p-4 space-y-3">
+                                                    {group.items.map((item: any) => (
+                                                        <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_120px_80px] gap-2 items-center">
+                                                            <input type="text" className="w-full border border-[#8c8f94] px-3 py-2 outline-none" value={item.name} placeholder="Item name" onChange={e => updateAddonItem(group.id, item.id, { name: e.target.value })} />
+                                                            <input type="number" step="0.01" className="w-full border border-[#8c8f94] px-3 py-2 outline-none" value={item.cost} placeholder="Cost" onChange={e => updateAddonItem(group.id, item.id, { cost: e.target.value })} />
+                                                            <button type="button" onClick={() => removeAddonItem(group.id, item.id)} className="text-red-500 text-xs font-semibold hover:underline">Remove</button>
+                                                        </div>
+                                                    ))}
+                                                    <button type="button" onClick={() => addAddonItem(group.id)} className="text-[#2271b1] text-xs font-semibold hover:underline">Add package item</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
 
