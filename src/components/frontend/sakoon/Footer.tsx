@@ -1,15 +1,19 @@
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { Icons } from '../../Icons';
 
 export default function Footer() {
+  const router = useRouter();
+  const basePath = router.pathname.startsWith('/shop') ? '/shop' : '/sakoon';
+
   const footerLinks = [
-    { name: 'Home', href: '/sakoon' },
-    { name: 'Fine Dine', href: '/sakoon/fine-dine' },
-    { name: 'Bar', href: '/sakoon/bar' },
-    { name: 'Banquet', href: '/sakoon/banquet' },
-    { name: 'Catering', href: '/sakoon/catering' },
-    { name: 'Contact Us', href: '/sakoon/about' },
+    { name: 'Home', href: basePath },
+    { name: 'Fine Dine', href: `${basePath}/fine-dine` },
+    { name: 'Bar', href: `${basePath}/bar` },
+    { name: 'Banquet', href: `${basePath}/banquet` },
+    { name: 'CATERING', href: `${basePath}/catering` },
+    { name: 'Contact Us', href: `${basePath}/about` },
   ];
 
   return (

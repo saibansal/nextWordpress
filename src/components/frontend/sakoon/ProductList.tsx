@@ -80,7 +80,8 @@ export default function ProductList({ categorySlug, showLocationSpecials = true,
             return;
         }
         // Navigate to product detail page
-        router.push(`/sakoon/product/${product.id}`);
+        const basePath = router.pathname.startsWith('/shop') ? '/shop' : '/sakoon';
+        router.push(`${basePath}/product/${product.id}`);
     };
 
     if (loading) {

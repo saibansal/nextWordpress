@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import AdminLayout from '../../components/AdminLayout';
 import { Icons } from '../../components/Icons';
 // import api from '../../lib/woocommerce';
@@ -97,9 +98,9 @@ export default function AdminOrders() {
                     {order.currency_symbol}{order.total}
                   </td>
                   <td className="px-6 py-4">
-                    <button className="text-muted-foreground hover:text-foreground p-1 transition-colors">
+                    <Link href={`/admin/orders/${order.id}`} className="text-muted-foreground hover:text-primary p-1 transition-colors inline-block" title="View Order Details">
                       <Icons.Settings className="w-4 h-4" />
-                    </button>
+                    </Link>
                   </td>
                 </tr>
               ))}

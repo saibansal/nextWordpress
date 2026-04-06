@@ -13,14 +13,16 @@ export default function Header() {
     setMounted(true);
   }, []);
 
+  const basePath = router.pathname.startsWith('/shop') ? '/shop' : '/sakoon';
+
   const navLinks = [
-    { name: 'HOME', href: '/sakoon' },
-    { name: 'MENU', href: '/sakoon/menu' },
-    { name: 'FINE DINE', href: '/sakoon/fine-dine' },
-    { name: 'BAR', href: '/sakoon/bar' },
-    { name: 'BANQUET', href: '/sakoon/banquet' },
-    { name: 'CATERING', href: '/sakoon/catering' },
-    { name: 'ABOUT', href: '/sakoon/about' },
+    { name: 'HOME', href: basePath },
+    { name: 'MENU', href: `${basePath}/menu` },
+    { name: 'FINE DINE', href: `${basePath}/fine-dine` },
+    { name: 'BAR', href: `${basePath}/bar` },
+    { name: 'BANQUET', href: `${basePath}/banquet` },
+    { name: 'CATERING', href: `${basePath}/catering` },
+    { name: 'ABOUT', href: `${basePath}/about` },
   ];
 
   // Refined ColorZilla gradient string
@@ -32,7 +34,7 @@ export default function Header() {
       style={{ background: headerGradient }}
     >
       <div className="flex items-center gap-4">
-        <Link href="/sakoon">
+        <Link href={basePath}>
           <img src="https://sakoon.vismaad.com/wp-content/uploads/2022/06/sakoonlogo__.png" alt="Sakoon Logo" className="h-10 md:h-12 w-auto" />
         </Link>
 
@@ -54,7 +56,7 @@ export default function Header() {
       </nav>
 
       <div className="flex items-center gap-3">
-        <Link href="/shop/cart" className="hidden sm:inline-flex items-center justify-center rounded-full border border-[#F2002D] text-[#F2002D] w-10 h-10 hover:bg-[#F2002D] hover:text-white transition-all">
+        <Link href={`${basePath}/cart`} className="hidden sm:inline-flex items-center justify-center rounded-full border border-[#F2002D] text-[#F2002D] w-10 h-10 hover:bg-[#F2002D] hover:text-white transition-all">
           <Icons.ShoppingCart className="w-5 h-5" />
         </Link>
         <button
