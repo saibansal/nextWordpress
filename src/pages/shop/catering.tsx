@@ -5,7 +5,6 @@ import ProductList from '../../components/frontend/sakoon/ProductList';
 export default function Catering() {
   return (
     <SakoonLayout title="Catering">
-      {/* Hero Banner Section */}
       <section className="relative h-[50vh] flex items-center justify-center overflow-hidden">
         <img
           src="https://sakoon.vismaad.com/wp-content/uploads/2026/03/fremont.webp"

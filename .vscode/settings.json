@@ -124,5 +124,6 @@
         "Invoke-Expression": false,
         "iex": false
     },
-    "geminicodeassist.project": "gen-lang-client-0150612845"
+    "geminicodeassist.project": "gen-lang-client-0150612845",
+    "geminicodeassist.agentYoloMode": true
 }
