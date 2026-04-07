@@ -15,10 +15,10 @@ export default async function handler(
 
     try {
       const response = await api.get('products', params);
-      
+
       const totalPages = response.headers?.['x-wp-totalpages'];
       const totalCount = response.headers?.['x-wp-total'];
-      
+
       if (totalPages) res.setHeader('x-wp-totalpages', totalPages);
       if (totalCount) res.setHeader('x-wp-total', totalCount);
 
@@ -26,12 +26,12 @@ export default async function handler(
     } catch (error: any) {
       const errorData = error.response?.data;
       const status = error.response?.status || 500;
-      
+
       console.error('--- WC API ERROR (Products) ---');
       console.error('URL: products');
       console.error('Params:', params);
       console.error('Status:', status);
-      
+
       if (typeof errorData === 'string' && errorData.includes('<!DOCTYPE')) {
         console.error('Response is HTML (Potential Server Error)');
       } else {
