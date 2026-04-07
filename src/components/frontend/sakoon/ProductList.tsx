@@ -14,6 +14,7 @@ export default function ProductList({ categorySlug, showLocationSpecials = true,
     const { selectedLocation, setPopupOpen, clearLocation, isLoading } = useLocation();
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     const handleClearLocation = () => {
         clearLocation();
@@ -31,6 +32,7 @@ export default function ProductList({ categorySlug, showLocationSpecials = true,
     useEffect(() => {
         async function fetchProducts() {
             setLoading(true);
+            setError(null);
             try {
                 // If NO location is selected, we do NOT fetch/show any products (Local state is Global/Empty)
                 if (!selectedLocation) {
@@ -48,15 +50,16 @@ export default function ProductList({ categorySlug, showLocationSpecials = true,
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error('API Error Response:', errorText);
-                    throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 100)}`);
+                    console.warn('API Error Response:', errorText);
+                    throw new Error(`Server error: ${response.status}`);
                 }
 
                 const data = await response.json();
                 // We still do a safety check on the client, but the heavy lifting is now server-side
                 setProducts(data);
-            } catch (err) {
-                console.error('Failed to fetch products:', err);
+            } catch (err: any) {
+                console.warn('Failed to fetch products:', err.message);
+                setError(err.message || 'An error occurred while fetching products.');
             } finally {
                 setLoading(false);
             }
@@ -79,6 +82,24 @@ export default function ProductList({ categorySlug, showLocationSpecials = true,
         return (
             <div className="flex items-center justify-center py-24">
                 <div className="w-12 h-12 border-4 border-gray-100 border-t-[#F2002D] rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="py-24 text-center border-2 border-dashed border-red-100 rounded-[3rem] bg-red-50/30">
+                <Icons.Package className="w-16 h-16 text-red-200 mx-auto mb-6" />
+                <h4 className="text-xl font-rubik font-black text-[#1B1B1B] uppercase tracking-widest mb-4">Error Loading Packages</h4>
+                <p className="text-red-400 text-xs mb-10 max-w-sm mx-auto font-medium italic">{error}</p>
+                <button
+                    onClick={() => {
+                        handleClearLocation();
+                    }}
+                    className="bg-[#F2002D] text-white px-10 py-4 rounded-full text-[11px] font-black uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl shadow-[#F2002D]/20 active:scale-95"
+                >
+                    Change Location
+                </button>
             </div>
         );
     }

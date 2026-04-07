@@ -57,6 +57,9 @@ export default async function handler(
       if (totalPages) res.setHeader('x-wp-totalpages', totalPages);
       if (totalCount) res.setHeader('x-wp-total', totalCount);
 
+      // Prevent browsers from aggressively caching the JSON response
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
       return res.status(200).json(products);
     } catch (error: any) {
       const errorData = error.response?.data;
