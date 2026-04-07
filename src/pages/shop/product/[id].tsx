@@ -51,7 +51,7 @@ export default function ShopProductDetail() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [addonSelections, setAddonSelections] = useState<Record<number, number[]>>({});
+  const [addonSelections, setAddonSelections] = useState<Record<number, any>>({});
   const [addingToCart, setAddingToCart] = useState(false);
   const [cartMessage, setCartMessage] = useState<string | null>(null);
 
@@ -88,7 +88,6 @@ export default function ShopProductDetail() {
         setLoading(false);
       }
     }
-
     fetchProduct();
   }, [id, selectedLocation]);
 
@@ -97,20 +96,25 @@ export default function ShopProductDetail() {
     if (!product) return;
     setAddingToCart(true);
 
-    // Validate required addons
     let isValid = true;
     for (const group of addonPackages) {
-      const selectedCount = addonSelections[group.id]?.length || 0;
+      const selection = addonSelections[group.id];
+      const selectedCount = group.selection_type === 'guest' ? Object.values(selection || {}).reduce((a: any, b: any) => a + b, 0) : (selection?.length || 0);
       const minSelected = group.min_selected !== undefined && group.min_selected !== null ? Number(group.min_selected) : 1;
       
       if (group.selection_type === 'multiple' && selectedCount < minSelected) {
         isValid = false;
-        alert(`Please select at least ${minSelected} option(s) for ${group.title}.`);
+        alert(`Please select exactly ${minSelected} option(s) for ${group.title}.`);
         break;
       }
-      if (group.selection_type === 'single' && minSelected > 0 && selectedCount === 0) {
+      if ((group.selection_type === 'single' || group.selection_type === 'select') && minSelected > 0 && selectedCount === 0) {
         isValid = false;
         alert(`Please select an option for ${group.title}.`);
+        break;
+      }
+      if (group.selection_type === 'guest' && minSelected > 0 && selectedCount < minSelected) {
+        isValid = false;
+        alert(`Please select exactly ${minSelected} guest(s) for ${group.title}.`);
         break;
       }
     }
@@ -123,27 +127,44 @@ export default function ShopProductDetail() {
     let addonsTotal = 0;
     const selectedAddons: any[] = [];
 
-    Object.entries(addonSelections).forEach(([groupId, itemIds]) => {
+    Object.entries(addonSelections).forEach(([groupId, selection]) => {
       const group = addonPackages.find((g: AddonGroup) => g.id === Number(groupId));
       if (group) {
-        itemIds.forEach((itemId) => {
-          const item = group.items.find((i: AddonItem) => i.id === Number(itemId));
-          if (item) {
-            addonsTotal += parseFloat(item.cost || '0');
-            selectedAddons.push({
-              groupId: group.id,
-              groupName: group.title,
-              itemId: item.id,
-              itemName: item.name,
-              cost: item.cost
-            });
-          }
-        });
+        if (group.selection_type === 'guest') {
+          Object.entries(selection as Record<number, number>).forEach(([itemId, qty]) => {
+            const item = group.items.find((i: AddonItem) => i.id === Number(itemId));
+            if (item && qty > 0) {
+              addonsTotal += parseFloat(item.cost || '0') * qty;
+              selectedAddons.push({
+                groupId: group.id,
+                groupName: group.title,
+                itemId: item.id,
+                itemName: item.name,
+                cost: item.cost,
+                quantity: qty
+              });
+            }
+          });
+        } else {
+          (selection as number[]).forEach((itemId) => {
+            const item = group.items.find((i: AddonItem) => i.id === Number(itemId));
+            if (item) {
+              addonsTotal += parseFloat(item.cost || '0');
+              selectedAddons.push({
+                groupId: group.id,
+                groupName: group.title,
+                itemId: item.id,
+                itemName: item.name,
+                cost: item.cost
+              });
+            }
+          });
+        }
       }
     });
 
     const finalPrice = (parseFloat(product.price || '0') + addonsTotal).toFixed(2);
-    const addonsKey = selectedAddons.map(a => a.itemId).sort().join('-');
+    const addonsKey = selectedAddons.map(a => `${a.itemId}${a.quantity ? `x${a.quantity}` : ''}`).sort().join('-');
     const cartItemId = `${product.id}-${addonsKey}`;
 
     const cartItem: CartItem = {
@@ -205,23 +226,32 @@ export default function ShopProductDetail() {
       return (addonMeta.value as AddonGroup[]) || [];
     })();
 
-    const initialSelections: Record<number, number[]> = {};
+    const initialSelections: Record<number, any> = {};
     parsedPackages.forEach((group: AddonGroup) => {
-      initialSelections[group.id] = [];
+      initialSelections[group.id] = group.selection_type === 'guest' ? {} : [];
     });
     setAddonSelections(initialSelections);
   }, [product]);
 
-  const handleAddonSelection = (groupId: number, itemId: number, selectionType: string) => {
+  const handleAddonSelection = (groupId: number, itemId: number, selectionType: string, quantity?: number) => {
     setAddonSelections(prev => {
       const current = prev[groupId] || [];
       if (selectionType === 'multiple') {
         return {
           ...prev,
-          [groupId]: current.includes(itemId)
-            ? current.filter(id => id !== itemId)
-            : [...current, itemId],
+          [groupId]: (current as number[]).includes(itemId)
+            ? (current as number[]).filter(id => id !== itemId)
+            : [...(current as number[]), itemId],
         };
+      }
+      if (selectionType === 'guest') {
+        const currentObj = Array.isArray(current) ? {} : { ...current };
+        if (quantity === 0) {
+          delete currentObj[itemId];
+        } else {
+          currentObj[itemId] = quantity;
+        }
+        return { ...prev, [groupId]: currentObj };
       }
       return { ...prev, [groupId]: [itemId] };
     });
@@ -265,15 +295,24 @@ export default function ShopProductDetail() {
   const calculateTotalPrice = () => {
     if (!product) return '0.00';
     let addonsTotal = 0;
-    Object.entries(addonSelections).forEach(([groupId, itemIds]) => {
+    Object.entries(addonSelections).forEach(([groupId, selection]) => {
       const group = addonPackages.find((g: AddonGroup) => g.id === Number(groupId));
       if (group) {
-        itemIds.forEach((itemId) => {
-          const item = group.items.find((i: AddonItem) => i.id === Number(itemId));
-          if (item) {
-            addonsTotal += parseFloat(item.cost || '0');
-          }
-        });
+        if (group.selection_type === 'guest') {
+          Object.entries(selection as Record<number, number>).forEach(([itemId, qty]) => {
+            const item = group.items.find((i: AddonItem) => i.id === Number(itemId));
+            if (item) {
+              addonsTotal += parseFloat(item.cost || '0') * qty;
+            }
+          });
+        } else {
+          (selection as number[]).forEach((itemId) => {
+            const item = group.items.find((i: AddonItem) => i.id === Number(itemId));
+            if (item) {
+              addonsTotal += parseFloat(item.cost || '0');
+            }
+          });
+        }
       }
     });
     return (parseFloat(product.price || '0') + addonsTotal).toFixed(2);
@@ -344,25 +383,77 @@ export default function ShopProductDetail() {
                         <div>
                           <h3 className="text-lg font-bold text-[#1B1B1B]">{group.title || `Package ${index + 1}`}</h3>
                           <p className="text-xs text-gray-500 mt-1">{group.instructions || 'Choose any 1 from the following'}</p>
-                          <p className="text-xs text-gray-500 mt-1">{group.selection_type === 'multiple' ? `Select at least ${group.min_selected || 1} option${(group.min_selected || 1) === 1 ? '' : 's'}.` : 'Choose one option.'}</p>
+                          <p className="text-xs text-gray-500 mt-1">{group.selection_type === 'multiple' ? `Select exactly ${group.min_selected || 1} option${(group.min_selected || 1) === 1 ? '' : 's'}.` : group.selection_type === 'guest' ? `Select exactly ${group.min_selected || 1} guest(s).` : 'Choose one option.'}</p>
                         </div>
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {group.items?.map((item: AddonItem) => (
-                          <label key={item.id || item.name} className="flex items-center gap-3 rounded-2xl border border-[#D1D5DB] p-3 cursor-pointer hover:border-[#F2002D] transition-colors">
-                            <input
-                              type={group.selection_type === 'multiple' ? 'checkbox' : 'radio'}
-                              name={`addon-${group.id}`}
-                              checked={addonSelections[group.id]?.includes(item.id) || false}
-                              onChange={() => handleAddonSelection(group.id, item.id, group.selection_type)}
-                              className="h-4 w-4 text-[#F2002D] accent-[#F2002D]"
-                            />
-                            <div className="flex-1 text-sm">
-                              <div className="font-semibold text-[#1B1B1B]">{item.name || 'Unnamed item'}</div>
-                              {item.cost ? <div className="text-xs text-gray-500">${item.cost}</div> : null}
+                      <div className={group.selection_type === 'select' ? "" : "grid gap-3 sm:grid-cols-2"}>
+                        {group.selection_type === 'select' ? (
+                          <select
+                            className="w-full border border-[#D1D5DB] rounded-xl p-3 bg-white outline-none focus:border-[#F2002D] transition-colors"
+                            value={addonSelections[group.id]?.[0] || ''}
+                            onChange={(e) => handleAddonSelection(group.id, Number(e.target.value), group.selection_type)}
+                          >
+                            <option value="" disabled>Select an option</option>
+                            {group.items?.map((item: AddonItem) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name} {item.cost ? `(+$${item.cost})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        ) : group.selection_type === 'guest' ? (
+                          group.items?.map((item: AddonItem) => {
+                            const minSel = group.min_selected !== undefined && group.min_selected !== null ? Number(group.min_selected) : 1;
+                            const currentGuestTotal = Object.values(addonSelections[group.id] || {}).reduce((a: any, b: any) => a + b, 0) as number;
+                            const isGuestLimitReached = minSel > 0 && currentGuestTotal >= minSel;
+                            return (
+                            <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl border border-[#D1D5DB] p-3">
+                              <div className="flex-1 text-sm">
+                                <div className="font-semibold text-[#1B1B1B]">{item.name || 'Guests'}</div>
+                                {item.cost ? <div className="text-xs text-gray-500">${item.cost} per guest</div> : null}
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddonSelection(group.id, item.id, 'guest', Math.max(0, (addonSelections[group.id]?.[item.id] || 0) - 1))}
+                                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-[#1B1B1B] hover:bg-gray-200 transition-colors"
+                                >-</button>
+                                <span className="font-bold w-4 text-center text-[#1B1B1B]">{addonSelections[group.id]?.[item.id] || 0}</span>
+                                <button
+                                  type="button"
+                                  disabled={isGuestLimitReached}
+                                  onClick={() => handleAddonSelection(group.id, item.id, 'guest', (addonSelections[group.id]?.[item.id] || 0) + 1)}
+                                  className={`w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-[#1B1B1B] transition-colors ${isGuestLimitReached ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
+                                >+</button>
+                              </div>
                             </div>
-                          </label>
-                        ))}
+                            );
+                          })
+                        ) : (
+                          group.items?.map((item: AddonItem) => {
+                            const minSel = group.min_selected !== undefined && group.min_selected !== null ? Number(group.min_selected) : 1;
+                            const isMultiple = group.selection_type === 'multiple';
+                            const currentSelection = addonSelections[group.id] || [];
+                            const isSelected = currentSelection.includes(item.id);
+                            const isLimitReached = isMultiple && minSel > 0 && currentSelection.length >= minSel;
+                            const isDisabled = isLimitReached && !isSelected;
+                            return (
+                            <label key={item.id || item.name} className={`flex items-center gap-3 rounded-2xl border border-[#D1D5DB] p-3 cursor-pointer transition-colors ${isDisabled ? 'opacity-50 pointer-events-none' : 'hover:border-[#F2002D]'}`}>
+                              <input
+                                type={isMultiple ? 'checkbox' : 'radio'}
+                                name={`addon-${group.id}`}
+                                checked={isSelected}
+                                onChange={() => handleAddonSelection(group.id, item.id, group.selection_type)}
+                                disabled={isDisabled}
+                                className="h-4 w-4 text-[#F2002D] accent-[#F2002D]"
+                              />
+                              <div className="flex-1 text-sm">
+                                <div className="font-semibold text-[#1B1B1B]">{item.name || 'Unnamed item'}</div>
+                                {item.cost ? <div className="text-xs text-gray-500">${item.cost}</div> : null}
+                              </div>
+                            </label>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   ))}

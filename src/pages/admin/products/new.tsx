@@ -516,14 +516,16 @@ export default function AddNewProduct() {
                                                         <input type="text" className="w-full border border-[#8c8f94] px-3 py-2 outline-none" value={group.instructions || 'Choose any 1 from the following'} placeholder="Instructions" onChange={e => updateAddonGroup(group.id, { instructions: e.target.value })} />
                                                     </div>
                                                     <div className="grid grid-cols-1 sm:grid-cols-[160px_120px] gap-3 mb-3">
-                                                        <select className="border border-[#8c8f94] px-3 py-2 bg-white outline-none" value={group.selection_type} onChange={e => updateAddonGroup(group.id, { selection_type: e.target.value, min_selected: e.target.value === 'single' ? 1 : group.min_selected || 1 })}>
+                                                        <select className="border border-[#8c8f94] px-3 py-2 bg-white outline-none" value={group.selection_type} onChange={e => updateAddonGroup(group.id, { selection_type: e.target.value, min_selected: (e.target.value === 'single' || e.target.value === 'select') ? 1 : group.min_selected || 1 })}>
                                                             <option value="single">Radio</option>
                                                             <option value="multiple">Checkbox</option>
+                                                            <option value="select">Select Dropdown</option>
+                                                            <option value="guest">Guest (Quantity)</option>
                                                         </select>
-                                                        <input type="number" min={1} disabled={group.selection_type === 'single'} className="w-full border border-[#8c8f94] px-3 py-2 outline-none disabled:cursor-not-allowed disabled:bg-[#f5f5f5]" value={group.min_selected || 1} placeholder="Select min option" onChange={e => updateAddonGroup(group.id, { min_selected: Math.max(1, Number(e.target.value) || 1) })} />
+                                                        <input type="number" min={1} disabled={group.selection_type === 'single' || group.selection_type === 'select'} className="w-full border border-[#8c8f94] px-3 py-2 outline-none disabled:cursor-not-allowed disabled:bg-[#f5f5f5]" value={group.min_selected || 1} placeholder="Select min option" onChange={e => updateAddonGroup(group.id, { min_selected: Math.max(1, Number(e.target.value) || 1) })} />
                                                     </div>
                                                     <div className="flex items-center justify-between gap-2">
-                                                        <p className="text-[11px] text-gray-500">{group.selection_type === 'multiple' ? `Select at least ${group.min_selected || 1} option${(group.min_selected || 1) === 1 ? '' : 's'} from this package.` : 'Choose one option from this package.'}</p>
+                                                        <p className="text-[11px] text-gray-500">{group.selection_type === 'multiple' ? `Select exactly ${group.min_selected || 1} option${(group.min_selected || 1) === 1 ? '' : 's'} from this package.` : group.selection_type === 'guest' ? 'Enter exact quantity required.' : 'Choose one option from this package.'}</p>
                                                         <button type="button" onClick={() => removeAddonGroup(group.id)} className="text-red-600 text-xs font-semibold hover:underline">Remove group</button>
                                                     </div>
                                                 </div>

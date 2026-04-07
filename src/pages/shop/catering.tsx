@@ -1,22 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import SakoonLayout from '../../components/frontend/sakoon/SakoonLayout';
 import ProductList from '../../components/frontend/sakoon/ProductList';
 
 export default function Catering() {
+  const [page, setPage] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/wp/pages?slug=catering')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.length > 0) setPage(data[0]);
+      })
+      .catch(console.error);
+  }, []);
+
+  const title = page?.title?.rendered || "Catering";
+
   return (
-    <SakoonLayout title="Catering">
+    <SakoonLayout title={page?.title?.rendered || "Catering"}>
       <section className="relative h-[50vh] flex items-center justify-center overflow-hidden">
         <img
           src="https://sakoon.vismaad.com/wp-content/uploads/2026/03/fremont.webp"
-          alt="Catering"
+          alt={title}
           className="absolute inset-0 w-full h-full object-cover brightness-[0.6] transition-transform duration-[10s] hover:scale-105"
         />
         <div className="relative z-10 text-center text-white px-4 mt-16">
-          <h1 className="text-5xl md:text-7xl font-rubik font-black uppercase tracking-widest drop-shadow-2xl mb-6">Catering</h1>
+          <h1 className="text-5xl md:text-7xl font-rubik font-black uppercase tracking-widest drop-shadow-2xl mb-6">{title}</h1>
           <div className="w-20 h-1 bg-[#F2002D] mx-auto mb-8"></div>
-          <p className="text-lg md:text-xl font-medium tracking-widest max-w-2xl mx-auto drop-shadow-md">
-            Let us make your next event unforgettable with our premium catering services.
-          </p>
+          {page?.content?.rendered ? (
+            <div dangerouslySetInnerHTML={{ __html: page.content.rendered }} className="text-lg md:text-xl font-medium tracking-widest max-w-2xl mx-auto drop-shadow-md" />
+          ) : (
+            <p className="text-lg md:text-xl font-medium tracking-widest max-w-2xl mx-auto drop-shadow-md">
+              Let us make your next event unforgettable with our premium catering services.
+            </p>
+          )}
         </div>
       </section>
 
