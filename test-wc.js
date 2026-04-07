@@ -1,10 +1,10 @@
 const WooCommerceRestApi = require("@woocommerce/woocommerce-rest-api").default;
 const api = new WooCommerceRestApi({
   url: "https://dev.vismaad.com/estore",
-  consumerKey: "ck_68e7bd4d20786d47277d0deb4df9507f03367bd6",
-  consumerSecret: "cs_b06f9e36ae325e90b30c965461452d13297c7409",
+  consumerKey: "ck_503b97b92ad5cfd943b0f3c682b47bb4953f5820",
+  consumerSecret: "cs_463aaf46f6661b151c9126757ce1e4c1a2d4ab92",
   version: "wc/v3",
-  queryStringAuth: true,
+  queryStringAuth: false,
   axiosConfig: {
     httpsAgent: new (require('https').Agent)({
       rejectUnauthorized: false

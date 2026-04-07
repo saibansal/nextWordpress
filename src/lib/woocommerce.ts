@@ -19,12 +19,13 @@ const api = new WooCommerceRestApi({
     },
     httpsAgent: new https.Agent({
         rejectUnauthorized: false
-    })
+    }),
+    timeout: 30000 // 30 second timeout to prevent hanging the server
   }
 });
 
 // Create a separate instance for WP REST API calls
-const wpAuth = process.env.WP_APP_PASSWORD 
+const wpAuth = (process.env.WP_USERNAME && process.env.WP_APP_PASSWORD)
   ? { Authorization: `Basic ${Buffer.from(`${process.env.WP_USERNAME}:${process.env.WP_APP_PASSWORD}`).toString('base64')}` }
   : {};
 

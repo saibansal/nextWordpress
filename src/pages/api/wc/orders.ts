@@ -48,12 +48,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to create order in WooCommerce');
+    const contentType = response.headers.get('content-type');
+    let data;
+    
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      throw new Error(text.length > 200 ? `WC API Error: Server returned HTML instead of JSON (${response.status})` : text || `WC API Error: ${response.status} ${response.statusText}`);
     }
-
+ 
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to process order in WooCommerce');
+    }
+ 
     return res.status(200).json(data);
   } catch (error: any) {
     console.error('WooCommerce Order Error:', error);

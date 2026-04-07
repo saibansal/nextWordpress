@@ -108,7 +108,7 @@ export default function AdminProducts() {
 
   useEffect(() => {
     fetchProducts(search, page);
-  }, [page, fetchProducts]);
+  }, [page, search, fetchProducts]);
 
   useEffect(() => {
     const saved = localStorage.getItem('sakoon_locations');

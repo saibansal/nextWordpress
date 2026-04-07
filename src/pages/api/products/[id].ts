@@ -16,7 +16,7 @@ export default async function handler(
       const status = error.response?.status || 500;
 
       console.error('--- WC API ERROR (Product) ---');
-      console.error('URL: products/${id}');
+      console.error(`URL: products/${id}`);
       console.error('Status:', status);
       console.error('Error Data:', errorData || error.message);
       console.error('--------------------------------');

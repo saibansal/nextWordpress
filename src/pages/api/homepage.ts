@@ -159,21 +159,9 @@ export default async function handler(
         }
       }
 
-      // Check for localStorage fallback (for development/demo purposes)
-      if (typeof window !== 'undefined') {
-        try {
-          const localData = localStorage.getItem('sakoon_homepage');
-          if (localData) {
-            const parsed = JSON.parse(localData);
-            // Only use localStorage if WordPress data is default (not customized)
-            if (homepageData.hero.title === 'CELEBRATING INDIAN FLAVOURS') {
-              homepageData = parsed;
-            }
-          }
-        } catch (storageError) {
-          console.warn('LocalStorage read failed:', storageError);
-        }
-      }
+      // Note: localStorage check is removed here because API routes run on the server 
+      // where window and localStorage are not available. Custom data should be managed 
+      // via WordPress meta or a database instead.
 
       return res.status(200).json(homepageData);
 

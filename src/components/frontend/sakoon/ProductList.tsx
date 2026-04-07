@@ -41,29 +41,20 @@ export default function ProductList({ categorySlug, showLocationSpecials = true,
 
                 const url = new URL('/api/products', window.location.origin);
                 url.searchParams.append('per_page', '100');
+                if (selectedLocation?.id) url.searchParams.append('location', String(selectedLocation.id));
                 if (categorySlug) url.searchParams.append('category', categorySlug);
 
                 const response = await fetch(url.toString());
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    throw new Error(`Server error: ${response.status}`);
+                    console.error('API Error Response:', errorText);
+                    throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 100)}`);
                 }
 
                 const data = await response.json();
-
-                const filtered = data.filter((p: any) => {
-                    const locMeta = (p.meta_data || []).find((m: any) => m.key === '_sakoon_locations');
-
-                    // Filter: Must have a location assigned and match current selection
-                    if (!locMeta || !locMeta.value || !Array.isArray(locMeta.value) || locMeta.value.length === 0) {
-                        return true; // Global items still show in ANY selected branch
-                    }
-
-                    const targetId = String(selectedLocation.id);
-                    return locMeta.value.some((id: any) => String(id) === targetId);
-                });
-                setProducts(filtered);
+                // We still do a safety check on the client, but the heavy lifting is now server-side
+                setProducts(data);
             } catch (err) {
                 console.error('Failed to fetch products:', err);
             } finally {

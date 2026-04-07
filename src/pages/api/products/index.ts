@@ -1,20 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import api from '../../lib/woocommerce';
+import api from '../../../lib/woocommerce';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method === 'GET') {
-    const { search, page, per_page, category } = req.query;
+    const { search, page, per_page, category, location } = req.query;
     const params: any = {
       page: Number(page) || 1,
-      per_page: Number(per_page) || 20,
+      per_page: Number(per_page) || 100, // Fetch more to allow for filtering
     };
     if (search) params.search = search;
     
     // SAFE RESOLUTION: WooCommerce doesn't support category slugs, only IDs.
-    // If a slug (like "banquet") is passed, we must resolve it.
     if (category) {
       if (!isNaN(Number(category as string))) {
         params.category = category;
@@ -24,7 +23,6 @@ export default async function handler(
           if (catResponse.data && catResponse.data.length > 0) {
             params.category = catResponse.data[0].id;
           } else {
-             // Slug not found? Avoid 400s by returning empty early.
              return res.status(200).json([]);
           }
         } catch (catErr: any) {
@@ -35,6 +33,23 @@ export default async function handler(
 
     try {
       const response = await api.get('products', params);
+      let products = response.data;
+
+      // SERVER-SIDE LOCATION FILTERING
+      if (location) {
+        const targetId = String(location);
+        products = products.filter((p: any) => {
+          const locMeta = (p.meta_data || []).find((m: any) => m.key === '_sakoon_locations');
+          
+          // If no location meta exists, treat as Global (visible everywhere)
+          if (!locMeta || !locMeta.value || !Array.isArray(locMeta.value) || locMeta.value.length === 0) {
+            return true;
+          }
+          
+          // Match the location ID (handles both string and number comparisons)
+          return locMeta.value.some((id: any) => String(id) === targetId);
+        });
+      }
       
       const totalPages = response.headers?.['x-wp-totalpages'];
       const totalCount = response.headers?.['x-wp-total'];
@@ -42,18 +57,11 @@ export default async function handler(
       if (totalPages) res.setHeader('x-wp-totalpages', totalPages);
       if (totalCount) res.setHeader('x-wp-total', totalCount);
 
-      return res.status(200).json(response.data);
+      return res.status(200).json(products);
     } catch (error: any) {
       const errorData = error.response?.data;
       const status = error.response?.status || 500;
-
-      // EXTREME FAIL-SAFE: Revert to 200 OK + empty array to prevent UI crash.
-      // This "removes the error" for the user while the API is fixed.
-      console.error(`--- WC API ERROR [GET products] ---`);
-      console.error('Status:', status);
-      console.error('Error Data:', JSON.stringify(errorData || error.message, null, 2));
-      console.error('------------------------------------');
-
+      console.error(`--- WC API ERROR [GET products] ---`, status, errorData || error.message);
       return res.status(200).json([]);
     }
   }
