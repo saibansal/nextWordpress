@@ -40,14 +40,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     {
       title: 'Content',
       items: [
-        // { name: 'All Pages', href: '/admin/pages', icon: Icons.FileText },
-        { name: 'About Us', href: '/admin/pages/about', icon: Icons.FileText },
-        { name: 'Banquet', href: '/admin/pages/banquet', icon: Icons.FileText },
-        { name: 'Bar', href: '/admin/pages/bar', icon: Icons.FileText },
-        { name: 'Catering', href: '/admin/pages/catering', icon: Icons.FileText },
-        { name: 'Fine Dine', href: '/admin/pages/fine-dine', icon: Icons.FileText },
-        { name: 'Menu', href: '/admin/pages/menu', icon: Icons.FileText },
-        { name: 'Order Online', href: '/admin/pages/order-online', icon: Icons.FileText },
+        { name: 'Pages', href: '/admin/pages', icon: Icons.FileText },
         { name: 'Homepage', href: '/admin/homepage', icon: Icons.Image },
         { name: 'Media', href: '/admin/media', icon: Icons.Image },
         { name: 'Comments', href: '/admin/comments', icon: Icons.MessageSquare },

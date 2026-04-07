@@ -40,7 +40,7 @@ export default function ProductList({ categorySlug, showLocationSpecials = true,
                 }
 
                 const url = new URL('/api/products', window.location.origin);
-                url.searchParams.append('per_page', '20');
+                url.searchParams.append('per_page', '100');
                 if (categorySlug) url.searchParams.append('category', categorySlug);
 
                 const response = await fetch(url.toString());
